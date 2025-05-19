@@ -27,6 +27,14 @@ function startTimer(duration) {
   }, 1000);
 }
 
+// Display AI reply in chat box
+function showReply(replyText) {
+  const el = document.createElement('div');
+  el.innerText = "👤 Patient: " + replyText;
+  document.getElementById('chat-container').appendChild(el);
+}
+
+// Main button logic
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
@@ -42,12 +50,8 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
 
     // Start voice loop
     startVoiceLoop(
-      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // 🔁 Replace with your real Make webhook URL
-      function(replyText) {
-        const el = document.createElement('div');
-        el.innerText = "👤 Patient: " + replyText;
-        document.getElementById('chat-container').appendChild(el);
-      }
+      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // Replace with your actual Make webhook URL
+      showReply
     );
   });
 });
