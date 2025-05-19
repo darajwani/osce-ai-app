@@ -1,4 +1,3 @@
-
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
 function getScenarios(callback) {
@@ -34,6 +33,65 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-title").textContent = randomScenario.title;
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
-    startTimer(300);
+
+    // Start timer
+    startTimer(300); // 5 minutes = 300 seconds
+
+    // Set session end time
+    sessionEndTime = Date.now() + 5 * 60 * 1000;
+
+    // Start voice loop
+    startVoiceLoop(
+      'https://hook.us1.make.com/YOUR-MAKE-WEBHOOK-URL-HERE', // 🔁 Replace with your real Make webhook URL
+      function(replyText) {
+        const el = document.createElement('div');
+        el.innerText = "👤 Patient: " + replyText;
+        document.getElementById('chat-container').appendChild(el);
+      }
+    );
   });
 });
+
+// --- Voice-to-AI Loop Logic ---
+let mediaRecorder;
+let isRecording = false;
+let sessionEndTime;
+
+function startVoiceLoop(makeWebhookUrl, onReply) {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    mediaRecorder = new MediaRecorder(stream);
+    isRecording = true;
+
+    mediaRecorder.ondataavailable = event => {
+      const audioBlob = new Blob([event.data], { type: 'audio/webm' });
+      sendToMake(audioBlob, makeWebhookUrl, onReply);
+    };
+
+    mediaRecorder.onstop = () => {
+      if (Date.now() < sessionEndTime && isRecording) {
+        mediaRecorder.start();
+        setTimeout(() => mediaRecorder.stop(), 5000); // record 5 sec
+      }
+    };
+
+    mediaRecorder.start();
+    setTimeout(() => mediaRecorder.stop(), 5000);
+  });
+}
+
+function sendToMake(blob, url, onReply) {
+  const formData = new FormData();
+  formData.append('file', blob, 'audio.webm');
+
+  fetch(url, {
+    method: 'POST',
+    body: formData,
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.reply) {
+      onReply(data.reply);
+    }
+  })
+  .catch(err => console.error('Make.com error:', err));
+}
