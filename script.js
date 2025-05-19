@@ -27,8 +27,9 @@ function startTimer(duration) {
   }, 1000);
 }
 
-// Display AI reply in chat box
+// ✅ Display AI reply in chat box
 function showReply(replyText) {
+  console.log("🧠 Showing reply:", replyText);
   const el = document.createElement('p');
   el.style.marginTop = "10px";
   el.style.padding = "8px";
@@ -38,7 +39,7 @@ function showReply(replyText) {
   document.getElementById('chat-container').appendChild(el);
 }
 
-// Main button logic
+// ✅ Start Scenario + Voice
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
@@ -46,21 +47,17 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
 
-    // Start timer
-    startTimer(300); // 5 minutes = 300 seconds
-
-    // Set session end time
+    startTimer(300); // 5 minutes
     sessionEndTime = Date.now() + 5 * 60 * 1000;
 
-    // Start voice loop
     startVoiceLoop(
-      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // Replace with your actual webhook URL
+      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // Replace with your own Make webhook
       showReply
     );
   });
 });
 
-// --- Voice-to-AI Loop Logic ---
+// 🎤 Voice Loop Logic
 let mediaRecorder;
 let isRecording = false;
 let sessionEndTime;
@@ -78,7 +75,7 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
     mediaRecorder.onstop = () => {
       if (Date.now() < sessionEndTime && isRecording) {
         mediaRecorder.start();
-        setTimeout(() => mediaRecorder.stop(), 5000); // record 5 sec
+        setTimeout(() => mediaRecorder.stop(), 5000);
       }
     };
 
@@ -87,6 +84,7 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
   });
 }
 
+// 🌐 Send to Make + log response
 function sendToMake(blob, url, onReply) {
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
@@ -97,9 +95,12 @@ function sendToMake(blob, url, onReply) {
   })
   .then(res => res.json())
   .then(data => {
+    console.log("📦 Data received from Make:", data);
     if (data.reply) {
       onReply(data.reply);
+    } else {
+      console.warn("⚠️ No 'reply' field in data:", data);
     }
   })
-  .catch(err => console.error('Make.com error:', err));
+  .catch(err => console.error('❌ Make.com error:', err));
 }
