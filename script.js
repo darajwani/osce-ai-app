@@ -1,10 +1,12 @@
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
+let isWaitingForReply = false;
+
 function getScenarios(callback) {
   fetch(csvUrl)
     .then(res => res.text())
     .then(csv => {
-      const rows = csv.split("\n").slice(1); // skip header
+      const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
         const [id, title, prompt_text, category] = row.split(",");
         return { title, prompt_text };
@@ -27,7 +29,6 @@ function startTimer(duration) {
   }, 1000);
 }
 
-// ✅ Display AI reply in chat box
 function showReply(replyText) {
   console.log("🧠 Showing reply:", replyText);
   const el = document.createElement('p');
@@ -39,7 +40,6 @@ function showReply(replyText) {
   document.getElementById('chat-container').appendChild(el);
 }
 
-// ✅ Start Scenario + Voice
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
@@ -47,17 +47,16 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
 
-    startTimer(300); // 5 minutes
+    startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
 
     startVoiceLoop(
-      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // Replace with your own Make webhook
+      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9',
       showReply
     );
   });
 });
 
-// 🎤 Voice Loop Logic
 let mediaRecorder;
 let isRecording = false;
 let sessionEndTime;
@@ -84,8 +83,14 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
   });
 }
 
-// 🌐 Send to Make + log response
 function sendToMake(blob, url, onReply) {
+  if (isWaitingForReply) {
+    console.log("⏳ Skipped: waiting for reply");
+    return;
+  }
+
+  isWaitingForReply = true;
+
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
 
@@ -95,12 +100,16 @@ function sendToMake(blob, url, onReply) {
   })
   .then(res => res.json())
   .then(data => {
-    console.log("📦 Data received from Make:", data);
+    console.log("📦 Data from Make:", data);
     if (data.reply) {
       onReply(data.reply);
     } else {
-      console.warn("⚠️ No 'reply' field in data:", data);
+      console.warn("⚠️ No reply in data:", data);
     }
+    isWaitingForReply = false;
   })
-  .catch(err => console.error('❌ Make.com error:', err));
+  .catch(err => {
+    console.error('❌ Make.com error:', err);
+    isWaitingForReply = false;
+  });
 }
