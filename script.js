@@ -29,7 +29,11 @@ function startTimer(duration) {
 
 // Display AI reply in chat box
 function showReply(replyText) {
-  const el = document.createElement('div');
+  const el = document.createElement('p');
+  el.style.marginTop = "10px";
+  el.style.padding = "8px";
+  el.style.backgroundColor = "#f2f2f2";
+  el.style.borderRadius = "6px";
   el.innerText = "👤 Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
 }
@@ -50,7 +54,7 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
 
     // Start voice loop
     startVoiceLoop(
-      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // Replace with your actual Make webhook URL
+      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', // Replace with your actual webhook URL
       showReply
     );
   });
