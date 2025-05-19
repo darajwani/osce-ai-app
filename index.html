@@ -10,11 +10,18 @@
   <h1>Practice OSCE</h1>
   <p>Select a random scenario from your Google Sheet:</p>
   <button id="start-random-btn">Start Random Scenario</button>
+
   <div id="scenario-box" class="scenario" style="display:none;">
     <h2 id="scenario-title"></h2>
     <p id="scenario-text"></p>
     <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
+
+    <!-- 🔽 This is the chat display -->
+    <div id="chat-container" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+      <strong>AI Patient Replies:</strong>
+    </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
