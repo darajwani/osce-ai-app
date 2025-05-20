@@ -54,7 +54,7 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     sessionEndTime = Date.now() + 5 * 60 * 1000;
 
     startVoiceLoop(
-      'https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9',
+      'https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2',
       showReply
     );
   });
