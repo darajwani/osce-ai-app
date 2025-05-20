@@ -1,6 +1,7 @@
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
 let isWaitingForReply = false;
+let currentScenario = null; // <--- NEW: will store the whole scenario object
 
 function getScenarios(callback) {
   fetch(csvUrl)
@@ -9,8 +10,8 @@ function getScenarios(callback) {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
         const [id, title, prompt_text, category] = row.split(",");
-        return { title, prompt_text };
-      }).filter(s => s.title);
+        return { id: id && id.trim(), title: title && title.trim(), prompt_text: prompt_text && prompt_text.trim() };
+      }).filter(s => s.title && s.id);
       callback(scenarios);
     });
 }
@@ -43,6 +44,8 @@ function showReply(replyText) {
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+    currentScenario = randomScenario; // <--- NEW: store the whole scenario
+
     document.getElementById("scenario-title").textContent = randomScenario.title;
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
@@ -93,6 +96,10 @@ function sendToMake(blob, url, onReply) {
 
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
+  // 🚩 NEW: Always send the current scenario id to Make.com!
+  if (currentScenario && currentScenario.id) {
+    formData.append('id', currentScenario.id);
+  }
 
   fetch(url, {
     method: 'POST',
