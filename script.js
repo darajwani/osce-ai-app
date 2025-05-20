@@ -1,7 +1,10 @@
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
 let isWaitingForReply = false;
-let currentScenario = null; // <--- NEW: will store the whole scenario object
+let currentScenario = null; // Stores the selected scenario
+let mediaRecorder;
+let isRecording = false;
+let sessionEndTime;
 
 function getScenarios(callback) {
   fetch(csvUrl)
@@ -26,6 +29,10 @@ function startTimer(duration) {
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
+      isRecording = false; // Stop further recording
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
     }
   }, 1000);
 }
@@ -39,18 +46,32 @@ function showReply(replyText) {
   el.style.borderRadius = "6px";
   el.innerText = "👤 Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
+
+  // Restart recording for next doctor question (if session not ended)
+  if (Date.now() < sessionEndTime && isRecording) {
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state === "inactive") {
+        mediaRecorder.start();
+        setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+          }
+        }, 5000);
+      }
+    }, 500); // short pause before next mic activation
+  }
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
-    currentScenario = randomScenario; // <--- NEW: store the whole scenario
+    currentScenario = randomScenario;
 
     document.getElementById("scenario-title").textContent = randomScenario.title;
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
 
-    startTimer(300);
+    startTimer(300); // 5 minutes
     sessionEndTime = Date.now() + 5 * 60 * 1000;
 
     startVoiceLoop(
@@ -59,10 +80,6 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     );
   });
 });
-
-let mediaRecorder;
-let isRecording = false;
-let sessionEndTime;
 
 function startVoiceLoop(makeWebhookUrl, onReply) {
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -74,15 +91,17 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
       sendToMake(audioBlob, makeWebhookUrl, onReply);
     };
 
-    mediaRecorder.onstop = () => {
-      if (Date.now() < sessionEndTime && isRecording) {
-        mediaRecorder.start();
-        setTimeout(() => mediaRecorder.stop(), 5000);
-      }
-    };
+    // The actual recording loop is now managed by showReply() for better UX
 
     mediaRecorder.start();
-    setTimeout(() => mediaRecorder.stop(), 5000);
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
+    }, 5000);
+  }).catch(err => {
+    alert("Could not access microphone: " + err.message);
+    isRecording = false;
   });
 }
 
@@ -96,7 +115,7 @@ function sendToMake(blob, url, onReply) {
 
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
-  // 🚩 NEW: Always send the current scenario id to Make.com!
+  // Always send the current scenario id to Make.com
   if (currentScenario && currentScenario.id) {
     formData.append('id', currentScenario.id);
   }
@@ -105,18 +124,49 @@ function sendToMake(blob, url, onReply) {
     method: 'POST',
     body: formData,
   })
-  .then(res => res.json())
-  .then(data => {
+  .then(async res => {
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      data = {};
+    }
     console.log("📦 Data from Make:", data);
     if (data.reply) {
       onReply(data.reply);
     } else {
       console.warn("⚠️ No reply in data:", data);
+      // Still restart recording to avoid dead end
+      if (Date.now() < sessionEndTime && isRecording) {
+        setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state === "inactive") {
+            mediaRecorder.start();
+            setTimeout(() => {
+              if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+              }
+            }, 5000);
+          }
+        }, 500);
+      }
     }
     isWaitingForReply = false;
   })
   .catch(err => {
     console.error('❌ Make.com error:', err);
     isWaitingForReply = false;
+    // Try to continue the loop even if error (optional: remove this for strict error handling)
+    if (Date.now() < sessionEndTime && isRecording) {
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === "inactive") {
+          mediaRecorder.start();
+          setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+              mediaRecorder.stop();
+            }
+          }, 5000);
+        }
+      }, 500);
+    }
   });
 }
