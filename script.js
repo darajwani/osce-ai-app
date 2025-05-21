@@ -39,7 +39,7 @@ function startTimer(duration) {
       clearInterval(interval);
       alert("OSCE session complete!");
       isRecording = false; // Stop voice loop
-      showMicRecording(false);
+      showMicRecording(false); // Stop glowing mic
     }
   }, 1000);
 }
@@ -89,22 +89,23 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
       recorder.onstart = () => showMicRecording(true);
       recorder.onstop = () => {
         showMicRecording(false);
+        stream.getTracks().forEach(track => track.stop()); // Release mic!
         if (chunks.length > 0) {
           const audioBlob = new Blob(chunks, { type: 'audio/webm' });
           sendToMake(audioBlob, makeWebhookUrl, (reply) => {
             if (reply) onReply(reply);
-            // Continue the voice loop after reply
-            setTimeout(recordChunk, 500); // Short gap
+            setTimeout(recordChunk, 500); // Continue loop
           });
         } else {
-          // If nothing was recorded, just continue loop
-          setTimeout(recordChunk, 500);
+          setTimeout(recordChunk, 500); // If no audio, continue loop
         }
       };
       recorder.start();
-      setTimeout(() => recorder.state === "recording" && recorder.stop(), 5000);
+      setTimeout(() => {
+        if (recorder.state === "recording") recorder.stop();
+      }, 5000);
     }).catch(err => {
-      alert("Could not access microphone: " + err.message);
+      alert("Could not access microphone: " + err.message + "\n\nTip: Allow mic access, use Chrome/Edge/Firefox, or check browser settings.");
       isRecording = false;
       showMicRecording(false);
     });
@@ -113,9 +114,7 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
 }
 
 function sendToMake(blob, url, onReply) {
-  if (isWaitingForReply) {
-    return;
-  }
+  if (isWaitingForReply) return;
   isWaitingForReply = true;
 
   const formData = new FormData();
@@ -137,10 +136,14 @@ function sendToMake(blob, url, onReply) {
     }
     if (data.reply) {
       onReply(data.reply);
+    } else if (data && Object.keys(data).length === 0) {
+      // Empty object - show error
+      showReply("⚠️ No AI reply received. (Check Make.com run logs for errors!)");
     }
     isWaitingForReply = false;
   })
   .catch(err => {
     isWaitingForReply = false;
+    showReply("❌ Network error sending audio. Please try again.");
   });
 }
