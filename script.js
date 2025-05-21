@@ -1,12 +1,12 @@
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
-let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
+let isWaitingForReply = false;
 
-// Generate a unique session ID for this browser session
+// Generate a unique session ID
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 function showMicRecording(isRec) {
@@ -35,6 +35,7 @@ function getScenarios(callback) {
 function startTimer(duration) {
   let timer = duration;
   const timerDisplay = document.getElementById("timer");
+  timerDisplay.textContent = "5:00";
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
@@ -42,7 +43,7 @@ function startTimer(duration) {
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
-      isRecording = false; // Stop voice loop
+      isRecording = false;
       showMicRecording(false);
       if (lastMediaStream) {
         lastMediaStream.getTracks().forEach(track => track.stop());
@@ -64,6 +65,7 @@ function showReply(replyText, isError) {
     el.innerText = "👤 Patient: " + replyText;
   }
   document.getElementById('chat-container').appendChild(el);
+  document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
@@ -74,44 +76,39 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-title").textContent = randomScenario.title;
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
-    document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
+    document.getElementById("chat-container").innerHTML = "<h3 style='margin-bottom:8px;'>AI Patient Replies:</h3>";
 
     startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
-    isRecording = true;
-    startVADVoiceLoop(
-      'https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2',
-      showReply
-    );
   });
 });
 
-function startVADVoiceLoop(makeWebhookUrl, onReply) {
-  function vadRecordChunk() {
-    if (!isRecording || Date.now() >= sessionEndTime) {
-      showMicRecording(false);
-      if (lastMediaStream) {
-        lastMediaStream.getTracks().forEach(track => track.stop());
-        lastMediaStream = null;
-      }
+document.getElementById("mic-icon").addEventListener("click", () => {
+  if (!currentScenario) {
+    alert("Start a scenario first!");
+    return;
+  }
+  if (isRecording || isWaitingForReply) {
+    alert("Wait for the AI to finish replying first.");
+    return;
+  }
+  isRecording = true;
+  showMicRecording(true);
+  startVADRecording(audioBlob => {
+    isRecording = false;
+    showMicRecording(false);
+
+    if (!audioBlob) {
+      showReply(null, true);
       return;
     }
-    startVADRecording((audioBlob) => {
-      if (!isRecording || Date.now() >= sessionEndTime) {
-        showMicRecording(false);
-        return;
-      }
-      sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
-        if (reply) onReply(reply, false);
-        if (error) onReply(null, true);
-        setTimeout(vadRecordChunk, 700); // Short gap between turns
-      });
+    sendToMake(audioBlob, 'https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', (reply, error) => {
+      if (reply) showReply(reply, false);
+      if (error) showReply(null, true);
     });
-  }
-  vadRecordChunk();
-}
+  });
+});
 
-// ----------- BASIC VAD RECORDING FUNCTION ---------------
 function startVADRecording(onStop, maxRecordingTime = 15000) {
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     lastMediaStream = stream;
@@ -145,7 +142,7 @@ function startVADRecording(onStop, maxRecordingTime = 15000) {
         }
         audioCtx.close();
       } else if (recorder.state === "recording") {
-        setTimeout(detectVoice, 200);
+        setTimeout(detectVoice, 150);
       }
     }
 
@@ -158,16 +155,13 @@ function startVADRecording(onStop, maxRecordingTime = 15000) {
         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
         onStop(audioBlob);
       } else {
-        // If nothing was recorded, still call onStop for retry/feedback
         onStop(null);
       }
     };
 
     recorder.start();
-    showMicRecording(true);
     detectVoice();
 
-    // Safety: stop after maxRecordingTime seconds regardless
     setTimeout(() => {
       if (recorder.state === "recording") {
         recorder.stop();
