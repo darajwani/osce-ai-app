@@ -8,12 +8,12 @@
   <style>
     #mic-icon {
       margin: 30px auto 20px;
-      width: 64px; height: 64px;
+      width: 44px; height: 44px;
       border-radius: 50%;
-      background: #eee url('https://img.icons8.com/ios-filled/50/000000/microphone.png') center/36px no-repeat;
+      background: #eee url('https://img.icons8.com/ios-filled/50/000000/microphone.png') center/26px no-repeat;
       box-shadow: 0 0 12px #ccc;
-      transition: box-shadow 0.2s;
-      cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+      cursor: default;
     }
     #mic-icon.mic-recording {
       background-color: #ffeaea;
@@ -21,16 +21,17 @@
       animation: pulse 1s infinite;
     }
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 6px #ff5252aa, 0 0 10px #ff5252; }
-      50% { box-shadow: 0 0 0 18px #ff525222, 0 0 40px #ff5252; }
-      100% { box-shadow: 0 0 0 6px #ff5252aa, 0 0 10px #ff5252; }
+      0% { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
+      50% { box-shadow: 0 0 0 16px #ff525222, 0 0 32px #ff5252; }
+      100% { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
     }
   </style>
 </head>
 <body>
   <h1>Practice OSCE</h1>
-  <p>Select a random scenario from your Google Sheet and press the mic to ask questions.<br>
-     <small><b>Tip:</b> Speak clearly and wait for the AI to respond before the next question.</small>
+  <p>
+    Select a random scenario and the microphone will activate automatically.<br>
+    <small><b>Tip:</b> Speak after each AI response. Session lasts 5 minutes.</small>
   </p>
   <button id="start-random-btn">Start Random Scenario</button>
   <div id="mic-icon" class="mic-idle" title="Microphone"></div>
@@ -39,10 +40,11 @@
     <h2 id="scenario-title"></h2>
     <p id="scenario-text"></p>
     <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
-    <div id="chat-container" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
-      <h3 style="margin-bottom: 8px;">AI Patient Replies:</h3>
+    <div id="chat-container" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; max-height:260px; overflow-y:auto;">
+      <b>AI Patient Replies:</b><br>
     </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
