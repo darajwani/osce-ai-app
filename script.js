@@ -4,6 +4,7 @@ let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
+let stopSession = false;
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
@@ -39,6 +40,7 @@ function startTimer(duration) {
       clearInterval(interval);
       alert("OSCE session complete!");
       isRecording = false; // Stop voice loop
+      stopSession = true;
       showMicRecording(false); // Stop glowing mic
     }
   }, 1000);
@@ -64,6 +66,7 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-box").style.display = "block";
     document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
 
+    stopSession = false;
     startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
     isRecording = true;
@@ -76,7 +79,7 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
 
 function startVoiceLoop(makeWebhookUrl, onReply) {
   function recordChunk() {
-    if (!isRecording || Date.now() >= sessionEndTime) {
+    if (!isRecording || Date.now() >= sessionEndTime || stopSession) {
       showMicRecording(false);
       return;
     }
@@ -93,11 +96,17 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
         if (chunks.length > 0) {
           const audioBlob = new Blob(chunks, { type: 'audio/webm' });
           sendToMake(audioBlob, makeWebhookUrl, (reply) => {
-            if (reply) onReply(reply);
-            setTimeout(recordChunk, 500); // Continue loop
+            if (reply) {
+              onReply(reply);
+              setTimeout(recordChunk, 500); // Continue loop after AI reply
+            } else {
+              // No reply, but continue loop after short pause
+              setTimeout(recordChunk, 700);
+            }
           });
         } else {
-          setTimeout(recordChunk, 500); // If no audio, continue loop
+          // No audio, continue loop
+          setTimeout(recordChunk, 700);
         }
       };
       recorder.start();
@@ -107,6 +116,7 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
     }).catch(err => {
       alert("Could not access microphone: " + err.message + "\n\nTip: Allow mic access, use Chrome/Edge/Firefox, or check browser settings.");
       isRecording = false;
+      stopSession = true;
       showMicRecording(false);
     });
   }
@@ -114,7 +124,10 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
 }
 
 function sendToMake(blob, url, onReply) {
-  if (isWaitingForReply) return;
+  if (isWaitingForReply) {
+    setTimeout(() => onReply && onReply(null), 600); // Continue after delay if blocked
+    return;
+  }
   isWaitingForReply = true;
 
   const formData = new FormData();
@@ -136,14 +149,15 @@ function sendToMake(blob, url, onReply) {
     }
     if (data.reply) {
       onReply(data.reply);
-    } else if (data && Object.keys(data).length === 0) {
-      // Empty object - show error
-      showReply("⚠️ No AI reply received. (Check Make.com run logs for errors!)");
+    } else {
+      // Don't show error to user, just continue the loop silently
+      onReply(null);
     }
     isWaitingForReply = false;
   })
   .catch(err => {
     isWaitingForReply = false;
-    showReply("❌ Network error sending audio. Please try again.");
+    // Continue the loop even if network error
+    onReply(null);
   });
 }
