@@ -59,7 +59,8 @@ function showReply(replyText, isError) {
   el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
   el.style.borderRadius = "6px";
   el.innerHTML = isError
-    ? `<span style="color:#b22;">&#9888; No AI reply received. (Check Make.com run logs for errors!)</span>`
+    ? `<span style="color:#b22;">&#9888; el.innerHTML = `<span style="color:#a75c00;">&#128172; <b>Patient:</b> Sorry, I didn’t catch that. Could you please repeat your question?</span>`;
+`
     : "👤 Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
 }
