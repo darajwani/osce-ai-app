@@ -1,10 +1,19 @@
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
 let isWaitingForReply = false;
-let currentScenario = null; // Stores the selected scenario
-let mediaRecorder;
-let isRecording = false;
+let currentScenario = null;
 let sessionEndTime;
+let isRecording = false;
+
+function showMicRecording(isRec) {
+  const mic = document.getElementById("mic-icon");
+  if (!mic) return;
+  if (isRec) {
+    mic.classList.add("mic-recording");
+  } else {
+    mic.classList.remove("mic-recording");
+  }
+}
 
 function getScenarios(callback) {
   fetch(csvUrl)
@@ -29,16 +38,13 @@ function startTimer(duration) {
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
-      isRecording = false; // Stop further recording
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-      }
+      isRecording = false; // Stop voice loop
+      showMicRecording(false);
     }
   }, 1000);
 }
 
 function showReply(replyText) {
-  console.log("🧠 Showing reply:", replyText);
   const el = document.createElement('p');
   el.style.marginTop = "10px";
   el.style.padding = "8px";
@@ -46,20 +52,6 @@ function showReply(replyText) {
   el.style.borderRadius = "6px";
   el.innerText = "👤 Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
-
-  // Restart recording for next doctor question (if session not ended)
-  if (Date.now() < sessionEndTime && isRecording) {
-    setTimeout(() => {
-      if (mediaRecorder && mediaRecorder.state === "inactive") {
-        mediaRecorder.start();
-        setTimeout(() => {
-          if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-          }
-        }, 5000);
-      }
-    }, 500); // short pause before next mic activation
-  }
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
@@ -70,10 +62,11 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-title").textContent = randomScenario.title;
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
+    document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
 
-    startTimer(300); // 5 minutes
+    startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
-
+    isRecording = true;
     startVoiceLoop(
       'https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2',
       showReply
@@ -82,40 +75,51 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
 });
 
 function startVoiceLoop(makeWebhookUrl, onReply) {
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    mediaRecorder = new MediaRecorder(stream);
-    isRecording = true;
-
-    mediaRecorder.ondataavailable = event => {
-      const audioBlob = new Blob([event.data], { type: 'audio/webm' });
-      sendToMake(audioBlob, makeWebhookUrl, onReply);
-    };
-
-    // The actual recording loop is now managed by showReply() for better UX
-
-    mediaRecorder.start();
-    setTimeout(() => {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-      }
-    }, 5000);
-  }).catch(err => {
-    alert("Could not access microphone: " + err.message);
-    isRecording = false;
-  });
+  function recordChunk() {
+    if (!isRecording || Date.now() >= sessionEndTime) {
+      showMicRecording(false);
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const recorder = new MediaRecorder(stream);
+      let chunks = [];
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstart = () => showMicRecording(true);
+      recorder.onstop = () => {
+        showMicRecording(false);
+        if (chunks.length > 0) {
+          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+          sendToMake(audioBlob, makeWebhookUrl, (reply) => {
+            if (reply) onReply(reply);
+            // Continue the voice loop after reply
+            setTimeout(recordChunk, 500); // Short gap
+          });
+        } else {
+          // If nothing was recorded, just continue loop
+          setTimeout(recordChunk, 500);
+        }
+      };
+      recorder.start();
+      setTimeout(() => recorder.state === "recording" && recorder.stop(), 5000);
+    }).catch(err => {
+      alert("Could not access microphone: " + err.message);
+      isRecording = false;
+      showMicRecording(false);
+    });
+  }
+  recordChunk();
 }
 
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) {
-    console.log("⏳ Skipped: waiting for reply");
     return;
   }
-
   isWaitingForReply = true;
 
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
-  // Always send the current scenario id to Make.com
   if (currentScenario && currentScenario.id) {
     formData.append('id', currentScenario.id);
   }
@@ -131,42 +135,12 @@ function sendToMake(blob, url, onReply) {
     } catch (e) {
       data = {};
     }
-    console.log("📦 Data from Make:", data);
     if (data.reply) {
       onReply(data.reply);
-    } else {
-      console.warn("⚠️ No reply in data:", data);
-      // Still restart recording to avoid dead end
-      if (Date.now() < sessionEndTime && isRecording) {
-        setTimeout(() => {
-          if (mediaRecorder && mediaRecorder.state === "inactive") {
-            mediaRecorder.start();
-            setTimeout(() => {
-              if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-              }
-            }, 5000);
-          }
-        }, 500);
-      }
     }
     isWaitingForReply = false;
   })
   .catch(err => {
-    console.error('❌ Make.com error:', err);
     isWaitingForReply = false;
-    // Try to continue the loop even if error (optional: remove this for strict error handling)
-    if (Date.now() < sessionEndTime && isRecording) {
-      setTimeout(() => {
-        if (mediaRecorder && mediaRecorder.state === "inactive") {
-          mediaRecorder.start();
-          setTimeout(() => {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-              mediaRecorder.stop();
-            }
-          }, 5000);
-        }
-      }, 500);
-    }
   });
 }
