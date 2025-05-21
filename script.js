@@ -4,7 +4,10 @@ let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
-let stopSession = false;
+let lastMediaStream = null;
+
+// Generate a unique session ID for this browser session
+window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
@@ -40,19 +43,24 @@ function startTimer(duration) {
       clearInterval(interval);
       alert("OSCE session complete!");
       isRecording = false; // Stop voice loop
-      stopSession = true;
-      showMicRecording(false); // Stop glowing mic
+      showMicRecording(false);
+      if (lastMediaStream) {
+        lastMediaStream.getTracks().forEach(track => track.stop());
+        lastMediaStream = null;
+      }
     }
   }, 1000);
 }
 
-function showReply(replyText) {
+function showReply(replyText, isError) {
   const el = document.createElement('p');
   el.style.marginTop = "10px";
   el.style.padding = "8px";
-  el.style.backgroundColor = "#f2f2f2";
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
   el.style.borderRadius = "6px";
-  el.innerText = "👤 Patient: " + replyText;
+  el.innerHTML = isError
+    ? `<span style="color:#b22;">&#9888; No AI reply received. (Check Make.com run logs for errors!)</span>`
+    : "👤 Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
 }
 
@@ -66,7 +74,6 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-box").style.display = "block";
     document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
 
-    stopSession = false;
     startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
     isRecording = true;
@@ -79,11 +86,16 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
 
 function startVoiceLoop(makeWebhookUrl, onReply) {
   function recordChunk() {
-    if (!isRecording || Date.now() >= sessionEndTime || stopSession) {
+    if (!isRecording || Date.now() >= sessionEndTime) {
       showMicRecording(false);
+      if (lastMediaStream) {
+        lastMediaStream.getTracks().forEach(track => track.stop());
+        lastMediaStream = null;
+      }
       return;
     }
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      lastMediaStream = stream;
       const recorder = new MediaRecorder(stream);
       let chunks = [];
       recorder.ondataavailable = e => {
@@ -92,21 +104,17 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
       recorder.onstart = () => showMicRecording(true);
       recorder.onstop = () => {
         showMicRecording(false);
-        stream.getTracks().forEach(track => track.stop()); // Release mic!
         if (chunks.length > 0) {
           const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          sendToMake(audioBlob, makeWebhookUrl, (reply) => {
-            if (reply) {
-              onReply(reply);
-              setTimeout(recordChunk, 500); // Continue loop after AI reply
-            } else {
-              // No reply, but continue loop after short pause
-              setTimeout(recordChunk, 700);
-            }
+          sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
+            if (reply) onReply(reply);
+            if (error) onReply(null, true);
+            // Continue the voice loop after reply/error
+            setTimeout(recordChunk, 600); // Short gap between turns
           });
         } else {
-          // No audio, continue loop
-          setTimeout(recordChunk, 700);
+          // If nothing was recorded, just continue loop
+          setTimeout(recordChunk, 600);
         }
       };
       recorder.start();
@@ -114,9 +122,8 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
         if (recorder.state === "recording") recorder.stop();
       }, 5000);
     }).catch(err => {
-      alert("Could not access microphone: " + err.message + "\n\nTip: Allow mic access, use Chrome/Edge/Firefox, or check browser settings.");
+      alert("Could not access microphone: " + err.message);
       isRecording = false;
-      stopSession = true;
       showMicRecording(false);
     });
   }
@@ -124,16 +131,16 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
 }
 
 function sendToMake(blob, url, onReply) {
-  if (isWaitingForReply) {
-    setTimeout(() => onReply && onReply(null), 600); // Continue after delay if blocked
-    return;
-  }
+  if (isWaitingForReply) return;
   isWaitingForReply = true;
 
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
   if (currentScenario && currentScenario.id) {
     formData.append('id', currentScenario.id);
+  }
+  if (window.currentSessionId) {
+    formData.append('session_id', window.currentSessionId);
   }
 
   fetch(url, {
@@ -148,16 +155,14 @@ function sendToMake(blob, url, onReply) {
       data = {};
     }
     if (data.reply) {
-      onReply(data.reply);
+      onReply(data.reply, false);
     } else {
-      // Don't show error to user, just continue the loop silently
-      onReply(null);
+      onReply(null, true); // Show error in UI
     }
     isWaitingForReply = false;
   })
   .catch(err => {
+    onReply(null, true); // Show error in UI
     isWaitingForReply = false;
-    // Continue the loop even if network error
-    onReply(null);
   });
 }
