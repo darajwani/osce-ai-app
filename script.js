@@ -56,12 +56,13 @@ function showReply(replyText, isError) {
   const el = document.createElement('p');
   el.style.marginTop = "10px";
   el.style.padding = "8px";
-  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
   el.style.borderRadius = "6px";
-  el.innerHTML = isError
-    ? `<span style="color:#b22;">&#9888; el.innerHTML = `<span style="color:#a75c00;">&#128172; <b>Patient:</b> Sorry, I didn’t catch that. Could you please repeat your question?</span>`;
-`
-    : "👤 Patient: " + replyText;
+  el.style.backgroundColor = isError ? "#fff5ea" : "#f2f2f2";
+  if (isError) {
+    el.innerHTML = `<span style="color:#a75c00;">&#128172; <b>Patient:</b> Sorry, I didn’t catch that. Could you please repeat your question?</span>`;
+  } else {
+    el.innerText = "👤 Patient: " + replyText;
+  }
   document.getElementById('chat-container').appendChild(el);
 }
 
@@ -78,15 +79,15 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
     isRecording = true;
-    startVoiceLoop(
+    startVADVoiceLoop(
       'https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2',
       showReply
     );
   });
 });
 
-function startVoiceLoop(makeWebhookUrl, onReply) {
-  function recordChunk() {
+function startVADVoiceLoop(makeWebhookUrl, onReply) {
+  function vadRecordChunk() {
     if (!isRecording || Date.now() >= sessionEndTime) {
       showMicRecording(false);
       if (lastMediaStream) {
@@ -95,40 +96,90 @@ function startVoiceLoop(makeWebhookUrl, onReply) {
       }
       return;
     }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      lastMediaStream = stream;
-      const recorder = new MediaRecorder(stream);
-      let chunks = [];
-      recorder.ondataavailable = e => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      recorder.onstart = () => showMicRecording(true);
-      recorder.onstop = () => {
+    startVADRecording((audioBlob) => {
+      if (!isRecording || Date.now() >= sessionEndTime) {
         showMicRecording(false);
-        if (chunks.length > 0) {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
-            if (reply) onReply(reply);
-            if (error) onReply(null, true);
-            // Continue the voice loop after reply/error
-            setTimeout(recordChunk, 600); // Short gap between turns
-          });
-        } else {
-          // If nothing was recorded, just continue loop
-          setTimeout(recordChunk, 600);
-        }
-      };
-      recorder.start();
-      setTimeout(() => {
-        if (recorder.state === "recording") recorder.stop();
-      }, 5000);
-    }).catch(err => {
-      alert("Could not access microphone: " + err.message);
-      isRecording = false;
-      showMicRecording(false);
+        return;
+      }
+      sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
+        if (reply) onReply(reply, false);
+        if (error) onReply(null, true);
+        setTimeout(vadRecordChunk, 700); // Short gap between turns
+      });
     });
   }
-  recordChunk();
+  vadRecordChunk();
+}
+
+// ----------- BASIC VAD RECORDING FUNCTION ---------------
+function startVADRecording(onStop, maxRecordingTime = 15000) {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    lastMediaStream = stream;
+    const recorder = new MediaRecorder(stream);
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    let chunks = [];
+    let lastVoiceTime = Date.now();
+    const SILENCE_THRESHOLD = 0.03; // tweak for environment!
+    const SILENCE_DURATION = 1200; // ms of silence before stopping
+
+    function detectVoice() {
+      const arr = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(arr);
+      let sum = 0;
+      for (let i = 0; i < arr.length; ++i) {
+        const norm = (arr[i] - 128) / 128;
+        sum += norm * norm;
+      }
+      const rms = Math.sqrt(sum / arr.length);
+      if (rms > SILENCE_THRESHOLD) {
+        lastVoiceTime = Date.now();
+      }
+      if (Date.now() - lastVoiceTime > SILENCE_DURATION) {
+        if (recorder.state === "recording") {
+          recorder.stop();
+        }
+        audioCtx.close();
+      } else if (recorder.state === "recording") {
+        setTimeout(detectVoice, 200);
+      }
+    }
+
+    recorder.ondataavailable = e => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      if (chunks.length > 0) {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        onStop(audioBlob);
+      } else {
+        // If nothing was recorded, still call onStop for retry/feedback
+        onStop(null);
+      }
+    };
+
+    recorder.start();
+    showMicRecording(true);
+    detectVoice();
+
+    // Safety: stop after maxRecordingTime seconds regardless
+    setTimeout(() => {
+      if (recorder.state === "recording") {
+        recorder.stop();
+        audioCtx.close();
+      }
+    }, maxRecordingTime);
+
+  }).catch(err => {
+    alert("Could not access microphone: " + err.message);
+    isRecording = false;
+    showMicRecording(false);
+  });
 }
 
 function sendToMake(blob, url, onReply) {
@@ -136,7 +187,9 @@ function sendToMake(blob, url, onReply) {
   isWaitingForReply = true;
 
   const formData = new FormData();
-  formData.append('file', blob, 'audio.webm');
+  if (blob) {
+    formData.append('file', blob, 'audio.webm');
+  }
   if (currentScenario && currentScenario.id) {
     formData.append('id', currentScenario.id);
   }
@@ -158,12 +211,12 @@ function sendToMake(blob, url, onReply) {
     if (data.reply) {
       onReply(data.reply, false);
     } else {
-      onReply(null, true); // Show error in UI
+      onReply(null, true);
     }
     isWaitingForReply = false;
   })
   .catch(err => {
-    onReply(null, true); // Show error in UI
+    onReply(null, true);
     isWaitingForReply = false;
   });
 }
