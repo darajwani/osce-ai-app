@@ -79,11 +79,10 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       console.log("🟢 Speech started");
       showMicRecording(true);
     },
-    onSpeechEnd: (audio) => {
+    onSpeechEnd: async () => {
       console.log("🔴 Speech ended, recording audio...");
-      showMicRecording(false);
 
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       let chunks = [];
 
       recorder.ondataavailable = e => {
@@ -94,7 +93,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         sendToMake(blob, makeWebhookUrl, (reply, error) => {
           if (reply) onReply(reply);
-          if (error) onReply(null, true);
+          else onReply(null, true);
         });
       };
 
@@ -125,17 +124,13 @@ function sendToMake(blob, url, onReply) {
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
 
-  fetch(url, {
-    method: 'POST',
-    body: formData
-  })
+  fetch(url, { method: 'POST', body: formData })
     .then(async res => {
       const data = await res.json().catch(() => ({}));
       onReply(data.reply || null, !data.reply);
       isWaitingForReply = false;
     })
-    .catch(err => {
-      console.error("SendToMake error:", err);
+    .catch(() => {
       onReply(null, true);
       isWaitingForReply = false;
     });
