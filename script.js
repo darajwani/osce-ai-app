@@ -1,22 +1,16 @@
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
+import VAD from 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web/dist/vad.min.js';
 
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
-
-// Generate a unique session ID for this browser session
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
   if (!mic) return;
-  if (isRec) {
-    mic.classList.add("mic-recording");
-  } else {
-    mic.classList.remove("mic-recording");
-  }
+  mic.classList.toggle("mic-recording", isRec);
 }
 
 function getScenarios(callback) {
@@ -25,8 +19,8 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const [id, title, prompt_text, category] = row.split(",");
-        return { id: id && id.trim(), title: title && title.trim(), prompt_text: prompt_text && prompt_text.trim() };
+        const [id, title, prompt_text] = row.split(",");
+        return { id: id?.trim(), title: title?.trim(), prompt_text: prompt_text?.trim() };
       }).filter(s => s.title && s.id);
       callback(scenarios);
     });
@@ -38,16 +32,13 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-    timerDisplay.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
-      isRecording = false; // Stop voice loop
+      isRecording = false;
       showMicRecording(false);
-      if (lastMediaStream) {
-        lastMediaStream.getTracks().forEach(track => track.stop());
-        lastMediaStream = null;
-      }
+      if (lastMediaStream) lastMediaStream.getTracks().forEach(t => t.stop());
     }
   }, 1000);
 }
@@ -59,7 +50,7 @@ function showReply(replyText, isError) {
   el.style.borderRadius = "6px";
   el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
   el.innerHTML = isError
-    ? `<span style="color:#b22;">&#9888; No AI reply received. (Check Make.com run logs for errors!)</span>`
+    ? `<span style="color:#b22;">⚠️ No AI reply received. (Check logs!)</span>`
     : "👤 Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
 }
@@ -68,66 +59,65 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
     currentScenario = randomScenario;
-
     document.getElementById("scenario-title").textContent = randomScenario.title;
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
     document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
-
     startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
     isRecording = true;
-    startVoiceLoop(
-      'https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2',
-      showReply
-    );
+    startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
   });
 });
 
-function startVoiceLoop(makeWebhookUrl, onReply) {
-  function recordChunk() {
-    if (!isRecording || Date.now() >= sessionEndTime) {
-      showMicRecording(false);
-      if (lastMediaStream) {
-        lastMediaStream.getTracks().forEach(track => track.stop());
-        lastMediaStream = null;
-      }
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      lastMediaStream = stream;
-      const recorder = new MediaRecorder(stream);
-      let chunks = [];
-      recorder.ondataavailable = e => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      recorder.onstart = () => showMicRecording(true);
-      recorder.onstop = () => {
-        showMicRecording(false);
-        if (chunks.length > 0) {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
-            if (reply) onReply(reply);
-            if (error) onReply(null, true);
-            // Continue the voice loop after reply/error
-            setTimeout(recordChunk, 600); // Short gap between turns
-          });
-        } else {
-          // If nothing was recorded, just continue loop
-          setTimeout(recordChunk, 600);
-        }
-      };
-      recorder.start();
-      setTimeout(() => {
-        if (recorder.state === "recording") recorder.stop();
-      }, 5000);
-    }).catch(err => {
-      alert("Could not access microphone: " + err.message);
-      isRecording = false;
-      showMicRecording(false);
+// ✅ NEW FUNCTION with VAD
+async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  lastMediaStream = stream;
+
+  const vad = await VAD.new({ stream });
+  const mediaRecorder = new MediaRecorder(stream);
+  let chunks = [];
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    showMicRecording(false);
+    const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+    chunks = [];
+
+    sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
+      if (reply) onReply(reply);
+      if (error) onReply(null, true);
     });
-  }
-  recordChunk();
+  };
+
+  const listenLoop = async () => {
+    while (isRecording && Date.now() < sessionEndTime) {
+      const isSpeech = await vad.waitForSpeechStart();
+      if (!isSpeech) continue;
+
+      showMicRecording(true);
+      chunks = [];
+      mediaRecorder.start();
+
+      const stopped = await vad.waitForSpeechEnd();
+      if (!stopped) continue;
+
+      if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Small gap before next listen
+    }
+
+    // Clean up after session ends
+    vad.destroy();
+    stream.getTracks().forEach(t => t.stop());
+    showMicRecording(false);
+  };
+
+  listenLoop();
 }
 
 function sendToMake(blob, url, onReply) {
@@ -136,33 +126,17 @@ function sendToMake(blob, url, onReply) {
 
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
-  if (currentScenario && currentScenario.id) {
-    formData.append('id', currentScenario.id);
-  }
-  if (window.currentSessionId) {
-    formData.append('session_id', window.currentSessionId);
-  }
+  if (currentScenario?.id) formData.append('id', currentScenario.id);
+  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
 
-  fetch(url, {
-    method: 'POST',
-    body: formData,
-  })
-  .then(async res => {
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      data = {};
-    }
-    if (data.reply) {
-      onReply(data.reply, false);
-    } else {
-      onReply(null, true); // Show error in UI
-    }
-    isWaitingForReply = false;
-  })
-  .catch(err => {
-    onReply(null, true); // Show error in UI
-    isWaitingForReply = false;
-  });
+  fetch(url, { method: 'POST', body: formData })
+    .then(async res => {
+      const data = await res.json().catch(() => ({}));
+      onReply(data.reply || null, !data.reply);
+      isWaitingForReply = false;
+    })
+    .catch(() => {
+      onReply(null, true);
+      isWaitingForReply = false;
+    });
 }
