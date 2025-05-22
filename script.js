@@ -1,4 +1,4 @@
-import VAD from 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@1.0.4/dist/index.browser.mjs';
+import VAD from 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@1.0.4/dist/index.esm.js';
 
 let isWaitingForReply = false;
 let currentScenario = null;
