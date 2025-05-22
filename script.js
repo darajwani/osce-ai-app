@@ -79,10 +79,28 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       console.log("🟢 Speech started");
       showMicRecording(true);
     },
-    onSpeechEnd: (audio) => {
-      console.log("🔴 Speech ended, sending...");
-      showMicRecording(false);
-      const blob = new File([audio], "audio.webm", { type: 'audio/webm' });
+    onSpeechEnd: () => {
+  const recorder = new MediaRecorder(lastMediaStream, { mimeType: 'audio/webm;codecs=opus' });
+  let chunks = [];
+
+  recorder.ondataavailable = e => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'audio/webm' });
+    sendToMake(blob, makeWebhookUrl, (reply, error) => {
+      if (reply) onReply(reply);
+      if (error) onReply(null, true);
+    });
+  };
+
+  recorder.start();
+  setTimeout(() => {
+    if (recorder.state === 'recording') recorder.stop();
+  }, 3000); // record for 3 seconds after speech ends
+}
+
       sendToMake(blob, makeWebhookUrl, (reply, error) => {
         if (reply) onReply(reply);
         if (error) onReply(null, true);
