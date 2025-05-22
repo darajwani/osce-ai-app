@@ -82,12 +82,10 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechEnd: () => {
       console.log("🔴 Speech ended, recording audio...");
 
-      showMicRecording(false);
-
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      const chunks = [];
+      let chunks = [];
 
-      recorder.ondataavailable = (e) => {
+      recorder.ondataavailable = e => {
         if (e.data.size > 0) chunks.push(e.data);
       };
 
@@ -101,10 +99,8 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
       recorder.start();
       setTimeout(() => {
-        if (recorder.state === "recording") {
-          recorder.stop();
-        }
-      }, 2000); // Capture 2 seconds
+        if (recorder.state === 'recording') recorder.stop();
+      }, 3000); // Record for 3 seconds after speech ends
     },
     modelURL: "./vad/silero_vad.onnx"
   });
