@@ -74,22 +74,23 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   lastMediaStream = stream;
 
+  let recorder = null;
+  let chunks = [];
+
   const myvad = await vad.MicVAD.new({
     onSpeechStart: () => {
       console.log("🟢 Speech started");
       showMicRecording(true);
-    },
-    onSpeechEnd: async () => {
-      console.log("🔴 Speech ended, recording audio...");
 
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      let chunks = [];
+      chunks = [];
+      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
 
       recorder.ondataavailable = e => {
         if (e.data.size > 0) chunks.push(e.data);
       };
 
       recorder.onstop = () => {
+        console.log("🎤 Recording stopped, sending to Make...");
         const blob = new Blob(chunks, { type: 'audio/webm' });
         sendToMake(blob, makeWebhookUrl, (reply, error) => {
           if (reply) onReply(reply);
@@ -98,9 +99,13 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       };
 
       recorder.start();
-      setTimeout(() => {
-        if (recorder.state === 'recording') recorder.stop();
-      }, 2000);
+    },
+    onSpeechEnd: () => {
+      console.log("🔴 Speech ended");
+      showMicRecording(false);
+      if (recorder && recorder.state === 'recording') {
+        recorder.stop();
+      }
     },
     modelURL: "./vad/silero_vad.onnx"
   });
