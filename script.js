@@ -81,8 +81,8 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechStart: () => {
       console.log("🟢 Speech started");
       showMicRecording(true);
-      chunks = [];
 
+      chunks = [];
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
 
       recorder.ondataavailable = e => {
@@ -90,7 +90,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       };
 
       recorder.onstop = () => {
-        console.log("🔴 Recording stopped, sending to Make...");
+        console.log("🎤 Recording stopped, sending to Make...");
         const blob = new Blob(chunks, { type: 'audio/webm' });
         sendToMake(blob, makeWebhookUrl, (reply, error) => {
           if (reply) onReply(reply);
@@ -101,7 +101,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       recorder.start();
     },
     onSpeechEnd: () => {
-      console.log("🛑 Speech ended");
+      console.log("🔴 Speech ended");
       showMicRecording(false);
       if (recorder && recorder.state === 'recording') {
         recorder.stop();
@@ -132,20 +132,21 @@ function sendToMake(blob, url, onReply) {
   fetch(url, { method: 'POST', body: formData })
     .then(async res => {
       const raw = await res.text();
-      console.log("📥 Raw response from Make:", raw);
+      console.log("📨 Raw response from Make:", raw);
 
-      let data;
       try {
-        data = JSON.parse(raw);
-      } catch (err) {
-        console.error("❌ Failed to parse JSON:", err);
+        const json = JSON.parse(raw);
+        const cleaned = json.reply
+          .replace(/``/g, '')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, '');
+        console.log("✅ Parsed reply:", cleaned);
+        onReply(cleaned);
+      } catch (e) {
+        console.error("❌ Failed to parse JSON:", e);
         onReply(null, true);
-        isWaitingForReply = false;
-        return;
       }
 
-      console.log("✅ Parsed reply:", data.reply);
-      onReply(data.reply || null, !data.reply);
       isWaitingForReply = false;
     })
     .catch(err => {
