@@ -83,7 +83,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       console.log("🔴 Speech ended, sending...");
       showMicRecording(false);
 
-      const blob = new Blob([audio], { type: 'audio/wav' });
+      const blob = new File([audio], "audio.webm", { type: 'audio/webm' });
       sendToMake(blob, makeWebhookUrl, (reply, error) => {
         if (reply) onReply(reply);
         if (error) onReply(null, true);
