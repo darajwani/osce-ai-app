@@ -82,7 +82,6 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechEnd: (audio) => {
       console.log("🔴 Speech ended, sending...");
       showMicRecording(false);
-
       const blob = new File([audio], "audio.webm", { type: 'audio/webm' });
       sendToMake(blob, makeWebhookUrl, (reply, error) => {
         if (reply) onReply(reply);
@@ -94,13 +93,12 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   myvad.start();
 
-  // Stop VAD cleanly when session ends
   setTimeout(() => {
     isRecording = false;
     myvad.destroy();
     stream.getTracks().forEach(track => track.stop());
     showMicRecording(false);
-  }, 5 * 60 * 1000); // 5 minutes
+  }, 5 * 60 * 1000);
 }
 
 function sendToMake(blob, url, onReply) {
@@ -108,7 +106,7 @@ function sendToMake(blob, url, onReply) {
   isWaitingForReply = true;
 
   const formData = new FormData();
-  formData.append('file', blob, 'audio.wav');
+  formData.append('file', blob, 'audio.webm'); // ✅ Corrected extension
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
 
