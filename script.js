@@ -1,4 +1,4 @@
-import VAD from 'https://esm.run/@ricky0123/vad-web';
+import VAD from './vad/index.esm.js';
 
 let isWaitingForReply = false;
 let currentScenario = null;
