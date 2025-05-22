@@ -1,11 +1,11 @@
-import VAD from './vad/index.esm.js';
-
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
@@ -70,54 +70,37 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
   });
 });
 
-// ✅ NEW FUNCTION with VAD
 async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   lastMediaStream = stream;
 
-  const vad = await VAD.new({ stream });
-  const mediaRecorder = new MediaRecorder(stream);
-  let chunks = [];
-
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
-
-  mediaRecorder.onstop = () => {
-    showMicRecording(false);
-    const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-    chunks = [];
-
-    sendToMake(audioBlob, makeWebhookUrl, (reply, error) => {
-      if (reply) onReply(reply);
-      if (error) onReply(null, true);
-    });
-  };
-
-  const listenLoop = async () => {
-    while (isRecording && Date.now() < sessionEndTime) {
-      const isSpeech = await vad.waitForSpeechStart();
-      if (!isSpeech) continue;
-
+  const myvad = await vad.MicVAD.new({
+    onSpeechStart: () => {
+      console.log("🟢 Speech started");
       showMicRecording(true);
-      chunks = [];
-      mediaRecorder.start();
+    },
+    onSpeechEnd: (audio) => {
+      console.log("🔴 Speech ended, sending...");
+      showMicRecording(false);
 
-      const stopped = await vad.waitForSpeechEnd();
-      if (!stopped) continue;
+      const blob = new Blob([audio], { type: 'audio/wav' });
+      sendToMake(blob, makeWebhookUrl, (reply, error) => {
+        if (reply) onReply(reply);
+        if (error) onReply(null, true);
+      });
+    },
+    modelURL: "./vad/silero_vad.onnx"
+  });
 
-      if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+  myvad.start();
 
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Small gap before next listen
-    }
-
-    // Clean up after session ends
-    vad.destroy();
-    stream.getTracks().forEach(t => t.stop());
+  // Stop VAD cleanly when session ends
+  setTimeout(() => {
+    isRecording = false;
+    myvad.destroy();
+    stream.getTracks().forEach(track => track.stop());
     showMicRecording(false);
-  };
-
-  listenLoop();
+  }, 5 * 60 * 1000); // 5 minutes
 }
 
 function sendToMake(blob, url, onReply) {
@@ -125,7 +108,7 @@ function sendToMake(blob, url, onReply) {
   isWaitingForReply = true;
 
   const formData = new FormData();
-  formData.append('file', blob, 'audio.webm');
+  formData.append('file', blob, 'audio.wav');
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
 
