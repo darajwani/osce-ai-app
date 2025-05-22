@@ -1,0 +1,1 @@
+// VAD module entry (placeholder for index.esm.js)
