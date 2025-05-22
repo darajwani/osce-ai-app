@@ -80,31 +80,31 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       showMicRecording(true);
     },
     onSpeechEnd: () => {
-  const recorder = new MediaRecorder(lastMediaStream, { mimeType: 'audio/webm;codecs=opus' });
-  let chunks = [];
+      console.log("🔴 Speech ended, recording audio...");
 
-  recorder.ondataavailable = e => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
+      showMicRecording(false);
 
-  recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'audio/webm' });
-    sendToMake(blob, makeWebhookUrl, (reply, error) => {
-      if (reply) onReply(reply);
-      if (error) onReply(null, true);
-    });
-  };
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      const chunks = [];
 
-  recorder.start();
-  setTimeout(() => {
-    if (recorder.state === 'recording') recorder.stop();
-  }, 3000); // record for 3 seconds after speech ends
-}
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
 
-      sendToMake(blob, makeWebhookUrl, (reply, error) => {
-        if (reply) onReply(reply);
-        if (error) onReply(null, true);
-      });
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        sendToMake(blob, makeWebhookUrl, (reply, error) => {
+          if (reply) onReply(reply);
+          if (error) onReply(null, true);
+        });
+      };
+
+      recorder.start();
+      setTimeout(() => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+        }
+      }, 2000); // Capture 2 seconds
     },
     modelURL: "./vad/silero_vad.onnx"
   });
@@ -124,7 +124,7 @@ function sendToMake(blob, url, onReply) {
   isWaitingForReply = true;
 
   const formData = new FormData();
-  formData.append('file', blob, 'audio.webm'); // ✅ Corrected extension
+  formData.append('file', blob, 'audio.webm');
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
 
