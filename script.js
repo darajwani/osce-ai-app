@@ -79,8 +79,9 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       console.log("🟢 Speech started");
       showMicRecording(true);
     },
-    onSpeechEnd: () => {
+    onSpeechEnd: (audio) => {
       console.log("🔴 Speech ended, recording audio...");
+      showMicRecording(false);
 
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       let chunks = [];
@@ -100,7 +101,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       recorder.start();
       setTimeout(() => {
         if (recorder.state === 'recording') recorder.stop();
-      }, 3000); // Record for 3 seconds after speech ends
+      }, 2000);
     },
     modelURL: "./vad/silero_vad.onnx"
   });
@@ -124,13 +125,17 @@ function sendToMake(blob, url, onReply) {
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
 
-  fetch(url, { method: 'POST', body: formData })
+  fetch(url, {
+    method: 'POST',
+    body: formData
+  })
     .then(async res => {
       const data = await res.json().catch(() => ({}));
       onReply(data.reply || null, !data.reply);
       isWaitingForReply = false;
     })
-    .catch(() => {
+    .catch(err => {
+      console.error("SendToMake error:", err);
       onReply(null, true);
       isWaitingForReply = false;
     });
