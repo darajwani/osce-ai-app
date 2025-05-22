@@ -81,8 +81,8 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechStart: () => {
       console.log("🟢 Speech started");
       showMicRecording(true);
-
       chunks = [];
+
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
 
       recorder.ondataavailable = e => {
@@ -90,7 +90,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       };
 
       recorder.onstop = () => {
-        console.log("🎤 Recording stopped, sending to Make...");
+        console.log("🔴 Recording stopped, sending to Make...");
         const blob = new Blob(chunks, { type: 'audio/webm' });
         sendToMake(blob, makeWebhookUrl, (reply, error) => {
           if (reply) onReply(reply);
@@ -101,7 +101,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       recorder.start();
     },
     onSpeechEnd: () => {
-      console.log("🔴 Speech ended");
+      console.log("🛑 Speech ended");
       showMicRecording(false);
       if (recorder && recorder.state === 'recording') {
         recorder.stop();
@@ -133,23 +133,22 @@ function sendToMake(blob, url, onReply) {
     .then(async res => {
       const raw = await res.text();
       console.log("📥 Raw response from Make:", raw);
-      let data = {};
+
+      let data;
       try {
         data = JSON.parse(raw);
-      } catch (e) {
-        console.error("❌ Failed to parse response JSON:", e);
+      } catch (err) {
+        console.error("❌ Failed to parse JSON:", err);
+        onReply(null, true);
+        isWaitingForReply = false;
+        return;
       }
 
-      if (data.reply) {
-        console.log("✅ Parsed reply:", data.reply);
-      } else {
-        console.warn("⚠️ No 'reply' in response!");
-      }
-
+      console.log("✅ Parsed reply:", data.reply);
       onReply(data.reply || null, !data.reply);
       isWaitingForReply = false;
     })
-    .catch((err) => {
+    .catch(err => {
       console.error("❌ Fetch error:", err);
       onReply(null, true);
       isWaitingForReply = false;
