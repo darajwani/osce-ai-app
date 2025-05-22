@@ -131,11 +131,26 @@ function sendToMake(blob, url, onReply) {
 
   fetch(url, { method: 'POST', body: formData })
     .then(async res => {
-      const data = await res.json().catch(() => ({}));
+      const raw = await res.text();
+      console.log("📥 Raw response from Make:", raw);
+      let data = {};
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        console.error("❌ Failed to parse response JSON:", e);
+      }
+
+      if (data.reply) {
+        console.log("✅ Parsed reply:", data.reply);
+      } else {
+        console.warn("⚠️ No 'reply' in response!");
+      }
+
       onReply(data.reply || null, !data.reply);
       isWaitingForReply = false;
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error("❌ Fetch error:", err);
       onReply(null, true);
       isWaitingForReply = false;
     });
