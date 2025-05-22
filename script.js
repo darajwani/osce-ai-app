@@ -136,12 +136,14 @@ function sendToMake(blob, url, onReply) {
 
       try {
         const json = JSON.parse(raw);
-        const cleaned = json.reply
+        const cleanedReply = json.reply
           .replace(/``/g, '')
           .replace(/\n/g, ' ')
-          .replace(/\r/g, '');
-        console.log("✅ Parsed reply:", cleaned);
-        onReply(cleaned);
+          .replace(/\r/g, '')
+          .replace(/"/g, "'"); // optional, avoids quote issues
+
+        console.log("✅ Parsed reply:", cleanedReply);
+        onReply(cleanedReply);
       } catch (e) {
         console.error("❌ Failed to parse JSON:", e);
         onReply(null, true);
