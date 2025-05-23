@@ -120,6 +120,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   }, 5 * 60 * 1000);
 }
 
+// ✅ UPDATED: Accepts Base64-encoded reply from Make.com
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) return;
   isWaitingForReply = true;
@@ -131,22 +132,21 @@ function sendToMake(blob, url, onReply) {
 
   fetch(url, { method: 'POST', body: formData })
     .then(async res => {
-      const raw = await res.text();
-      console.log("📨 Raw response from Make:", raw);
+      const rawBase64 = await res.text();
+      console.log("📨 Raw Base64 response from Make:", rawBase64);
 
       try {
-        if (!raw.trim().startsWith("{")) throw new Error("Non-JSON response");
-        const json = JSON.parse(raw);
-        const cleanedReply = json.reply
+        const decoded = atob(rawBase64);
+        const cleanedReply = decoded
           .replace(/```/g, '')
           .replace(/\n/g, ' ')
           .replace(/\r/g, '')
-          .replace(/"/g, "'"); // avoids breaking HTML/JSON
+          .replace(/"/g, "'");
 
-        console.log("✅ Parsed reply:", cleanedReply);
+        console.log("✅ Decoded reply:", cleanedReply);
         onReply(cleanedReply);
       } catch (e) {
-        console.error("❌ Failed to parse JSON:", e);
+        console.error("❌ Failed to decode Base64:", e);
         onReply(null, true);
       }
 
