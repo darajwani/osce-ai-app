@@ -146,15 +146,10 @@ function sendToMake(blob, url, onReply) {
           return;
         }
 
-        const cleanedReply = decodedReply
-  .replace(/```/g, '')
-  .replace(/\n/g, ' ')
-  .replace(/\r/g, '')
-  .replace(/â€™/g, "'")
-  .replace(/â€œ/g, '"')
-  .replace(/â€/g, "'")
-  .replace(/â/g, "'") // extra fallback for isolated bad chars
-  .replace(/"/g, "'"); // escape quote if needed
+        const cleanedReply = atob(json.reply)
+  .replace(/\uFFFD/g, '') // remove invalid unicode placeholder
+  .replace(/\s+/g, ' ')    // normalize spaces
+  .trim();
 
 
         console.log("✅ Decoded reply:", cleanedReply);
