@@ -51,7 +51,7 @@ function showReply(replyText, isError) {
   el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
   el.innerHTML = isError
     ? `<span style="color:#b22;">⚠️ No AI reply received. (Check logs!)</span>`
-    : "👤 Patient: " + replyText;
+    : "🧑‍⚕️ Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
 }
 
@@ -135,11 +135,25 @@ function sendToMake(blob, url, onReply) {
       console.log("📨 Raw response from Make:", raw);
 
       try {
-        if (!raw.trim().startsWith("{")) throw new Error("Non-JSON response");
         const json = JSON.parse(raw);
-        const decoded = atob(json.reply); // Decode Base64
-        console.log("✅ Parsed reply:", decoded);
-        onReply(decoded);
+        let decodedReply = '';
+        try {
+          decodedReply = atob(json.reply);
+        } catch (decodeErr) {
+          console.error("❌ Failed to decode base64 reply:", decodeErr);
+          onReply(null, true);
+          isWaitingForReply = false;
+          return;
+        }
+
+        const cleanedReply = decodedReply
+          .replace(/```/g, '')
+          .replace(/\n/g, ' ')
+          .replace(/\r/g, '')
+          .replace(/"/g, "'");
+
+        console.log("✅ Decoded reply:", cleanedReply);
+        onReply(cleanedReply);
       } catch (e) {
         console.error("❌ Failed to parse JSON:", e);
         onReply(null, true);
