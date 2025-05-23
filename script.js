@@ -146,10 +146,9 @@ function sendToMake(blob, url, onReply) {
           return;
         }
 
-        const cleanedReply = atob(json.reply)
-  .replace(/\uFFFD/g, '') // remove invalid unicode placeholder
-  .replace(/\s+/g, ' ')    // normalize spaces
-  .trim();
+       const decoded = atob(json.reply);
+const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
 
 
         console.log("✅ Decoded reply:", cleanedReply);
