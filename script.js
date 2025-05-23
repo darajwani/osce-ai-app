@@ -1,80 +1,65 @@
-const micButton = document.getElementById('mic-button');
-const patientReplies = document.getElementById('patient-replies');
+window.addEventListener("DOMContentLoaded", function () {
+  const startButton = document.getElementById("startButton");
+  const micButton = document.getElementById("micButton");
+  const responseContainer = document.getElementById("response");
 
-let mediaRecorder;
-let audioChunks = [];
+  const webhookURL = "https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2";
+  let mediaRecorder;
+  let audioChunks = [];
 
-micButton.addEventListener('click', async () => {
-  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-    startRecording();
-  } else {
-    stopRecording();
-  }
-});
-
-function startRecording() {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
 
-      mediaRecorder.ondataavailable = event => {
+      audioChunks = [];
+      mediaRecorder.ondataavailable = (event) => {
         audioChunks.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
         const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append("audio", audioBlob, "recording.wav");
 
+        const response = await fetch(webhookURL, {
+          method: "POST",
+          body: formData,
+        });
+
+        const text = await response.text();
         try {
-          const response = await fetch('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', {
-            method: 'POST',
-            body: formData
-          });
-
-          const textResponse = await response.text();
-          console.log("Raw response from Make:", textResponse);
-
-          // Extract reply content using regex
-          const match = textResponse.match(/"reply"\s*:\s*"([\s\S]*?)"/);
-          const reply = match ? match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : "";
-
-          console.log("Parsed reply:", reply);
-          if (reply) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('patient-reply');
-            messageDiv.textContent = `🧑‍⚕️ Patient: ${reply}`;
-            patientReplies.appendChild(messageDiv);
-          } else {
-            showError("No AI reply received. (Empty reply)");
-          }
-
+          const data = JSON.parse(text);
+          const cleanReply = data.reply
+            .replace(/`/g, "")
+            .replace(/\n/g, " ")
+            .replace(/\r/g, " ");
+          responseContainer.innerText = cleanReply;
         } catch (error) {
-          console.error("Error:", error);
-          showError("No AI reply received. (Check logs!)");
+          console.error("Failed to parse JSON:", error);
+          responseContainer.innerText = "⚠️ No AI reply received. (Check logs!)";
         }
       };
 
       mediaRecorder.start();
-      micButton.classList.add('recording');
-    })
-    .catch(err => {
-      console.error("Microphone access denied:", err);
-      showError("Microphone access denied.");
-    });
-}
-
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    micButton.classList.remove('recording');
+      setTimeout(() => mediaRecorder.stop(), 5000); // Record for 5 seconds
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      responseContainer.innerText = "⚠️ Microphone error.";
+    }
   }
-}
 
-function showError(message) {
-  const errorDiv = document.createElement('div');
-  errorDiv.classList.add('error-message');
-  errorDiv.textContent = `⚠️ ${message}`;
-  patientReplies.appendChild(errorDiv);
-}
+  if (startButton) {
+    startButton.addEventListener("click", () => {
+      responseContainer.innerText = "Waiting for AI reply...";
+      startRecording();
+    });
+  }
+
+  if (micButton) {
+    micButton.addEventListener("click", () => {
+      responseContainer.innerText = "Waiting for AI reply...";
+      startRecording();
+    });
+  }
+});
