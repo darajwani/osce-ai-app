@@ -1,65 +1,84 @@
-window.addEventListener("DOMContentLoaded", function () {
-  const startButton = document.getElementById("startButton");
-  const micButton = document.getElementById("micButton");
-  const responseContainer = document.getElementById("response");
+document.addEventListener('DOMContentLoaded', function () {
+  const startButton = document.getElementById('start-button');
+  const micIcon = document.getElementById('mic-icon');
+  const aiResponseContainer = document.getElementById('ai-response');
 
-  const webhookURL = "https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2";
   let mediaRecorder;
   let audioChunks = [];
+
+  function log(message) {
+    console.log(message);
+  }
+
+  function displayReply(reply) {
+    const bubble = document.createElement('div');
+    bubble.className = 'ai-bubble';
+    bubble.textContent = `👨‍⚕️ Patient: ${reply}`;
+    aiResponseContainer.appendChild(bubble);
+  }
+
+  async function sendAudioToMake(audioBlob) {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.wav');
+
+    try {
+      const response = await fetch('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', {
+        method: 'POST',
+        body: formData
+      });
+
+      const text = await response.text();
+      log('Raw response from Make: ' + text);
+
+      const json = JSON.parse(text);
+      const reply = json.reply;
+      log('Parsed reply: ' + reply);
+      displayReply(reply);
+
+    } catch (error) {
+      console.error('Error sending audio:', error);
+    }
+  }
 
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
-
       audioChunks = [];
-      mediaRecorder.ondataavailable = (event) => {
+
+      mediaRecorder.addEventListener('dataavailable', event => {
         audioChunks.push(event.data);
-      };
+      });
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-        const formData = new FormData();
-        formData.append("audio", audioBlob, "recording.wav");
-
-        const response = await fetch(webhookURL, {
-          method: "POST",
-          body: formData,
-        });
-
-        const text = await response.text();
-        try {
-          const data = JSON.parse(text);
-          const cleanReply = data.reply
-            .replace(/`/g, "")
-            .replace(/\n/g, " ")
-            .replace(/\r/g, " ");
-          responseContainer.innerText = cleanReply;
-        } catch (error) {
-          console.error("Failed to parse JSON:", error);
-          responseContainer.innerText = "⚠️ No AI reply received. (Check logs!)";
-        }
-      };
+      mediaRecorder.addEventListener('stop', () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        log('Recording stopped, sending to Make...');
+        sendAudioToMake(audioBlob);
+      });
 
       mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 5000); // Record for 5 seconds
+      log('Speech started');
     } catch (err) {
-      console.error("Error accessing microphone:", err);
-      responseContainer.innerText = "⚠️ Microphone error.";
+      console.error('Error accessing microphone:', err);
     }
   }
 
-  if (startButton) {
-    startButton.addEventListener("click", () => {
-      responseContainer.innerText = "Waiting for AI reply...";
-      startRecording();
-    });
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      log('Speech ended');
+    }
   }
 
-  if (micButton) {
-    micButton.addEventListener("click", () => {
-      responseContainer.innerText = "Waiting for AI reply...";
+  micIcon.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      stopRecording();
+    } else {
       startRecording();
-    });
-  }
+    }
+  });
+
+  startButton.addEventListener('click', () => {
+    aiResponseContainer.innerHTML = '';
+  });
 });
