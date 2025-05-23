@@ -135,20 +135,13 @@ function sendToMake(blob, url, onReply) {
       console.log("📨 Raw response from Make:", raw);
 
       try {
-        const parsed = JSON.parse(raw); // Parse JSON
-        const base64Reply = parsed.reply;
-        const decoded = atob(base64Reply); // Decode from base64
-
-        const cleanedReply = decoded
-          .replace(/```/g, '')
-          .replace(/\n/g, ' ')
-          .replace(/\r/g, '')
-          .replace(/"/g, "'");
-
-        console.log("✅ Decoded reply:", cleanedReply);
-        onReply(cleanedReply);
+        if (!raw.trim().startsWith("{")) throw new Error("Non-JSON response");
+        const json = JSON.parse(raw);
+        const decoded = atob(json.reply); // Decode Base64
+        console.log("✅ Parsed reply:", decoded);
+        onReply(decoded);
       } catch (e) {
-        console.error("❌ Failed to decode reply:", e);
+        console.error("❌ Failed to parse JSON:", e);
         onReply(null, true);
       }
 
