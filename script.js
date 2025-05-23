@@ -146,9 +146,17 @@ function sendToMake(blob, url, onReply) {
           return;
         }
 
-       const decoded = atob(json.reply);
-const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+      try {
+  const decoded = atob(json.reply);
+  const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+  const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+  console.log("✅ Decoded reply:", cleanedReply);
+  onReply(cleanedReply);
+} catch (decodeError) {
+  console.error("❌ Failed to decode UTF-8:", decodeError);
+  onReply(null, true);
+}
+
 
 
         console.log("✅ Decoded reply:", cleanedReply);
