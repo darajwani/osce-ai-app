@@ -50,7 +50,7 @@ function showReply(replyText, isError) {
   el.style.borderRadius = "6px";
   el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
   el.innerHTML = isError
-    ? `<span style="color:#b22;">⚠️ No AI reply received. (Check logs!)</span>`
+    ? "🧑‍⚕️ Patient: Sorry, I couldn't hear you. Could you please repeat that?"
     : "🧑‍⚕️ Patient: " + replyText;
   document.getElementById('chat-container').appendChild(el);
 }
@@ -136,41 +136,21 @@ function sendToMake(blob, url, onReply) {
 
       try {
         const json = JSON.parse(raw);
-        let decodedReply = '';
-        try {
-          decodedReply = atob(json.reply);
-        } catch (decodeErr) {
-          console.error("❌ Failed to decode base64 reply:", decodeErr);
-          onReply(null, true);
-          isWaitingForReply = false;
-          return;
-        }
-
-      try {
-  const decoded = atob(json.reply);
-  const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-  const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-  console.log("✅ Decoded reply:", cleanedReply);
-  onReply(cleanedReply);
-} catch (decodeError) {
-  console.error("❌ Failed to decode UTF-8:", decodeError);
-  onReply(null, true);
-}
-
-
-
+        const decoded = atob(json.reply);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
         console.log("✅ Decoded reply:", cleanedReply);
         onReply(cleanedReply);
       } catch (e) {
-        console.error("❌ Failed to parse JSON:", e);
-        onReply(null, true);
+        console.error("❌ Failed to decode or parse:", e);
+        onReply("Sorry, I couldn't hear you. Could you please repeat that?");
+      } finally {
+        isWaitingForReply = false;
       }
-
-      isWaitingForReply = false;
     })
     .catch(err => {
       console.error("❌ Fetch error:", err);
-      onReply(null, true);
+      onReply("Sorry, I couldn't hear you. Could you please repeat that?");
       isWaitingForReply = false;
     });
 }
