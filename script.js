@@ -48,10 +48,10 @@ function showReply(replyText, isError) {
   el.style.marginTop = "10px";
   el.style.padding = "8px";
   el.style.borderRadius = "6px";
-  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-  el.innerHTML = isError
-    ? "🧑‍⚕️ Patient: Sorry, I couldn't hear you. Could you please repeat that?"
-    : "🧑‍⚕️ Patient: " + replyText;
+  el.style.backgroundColor = "#f2f2f2";
+  el.innerHTML = "🧑‍⚕️ Patient: " + (isError
+    ? "Sorry, I couldn't hear you. Could you please repeat that?"
+    : replyText);
   document.getElementById('chat-container').appendChild(el);
 }
 
@@ -81,7 +81,6 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechStart: () => {
       console.log("🟢 Speech started");
       showMicRecording(true);
-
       chunks = [];
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
 
@@ -139,18 +138,23 @@ function sendToMake(blob, url, onReply) {
         const decoded = atob(json.reply);
         const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
         const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-        console.log("✅ Decoded reply:", cleanedReply);
-        onReply(cleanedReply);
+
+        if (!cleanedReply || cleanedReply.length < 5) {
+          onReply(null, true);
+        } else {
+          console.log("✅ Decoded reply:", cleanedReply);
+          onReply(cleanedReply);
+        }
       } catch (e) {
         console.error("❌ Failed to decode or parse:", e);
-        onReply("Sorry, I couldn't hear you. Could you please repeat that?");
+        onReply(null, true);
       } finally {
         isWaitingForReply = false;
       }
     })
     .catch(err => {
       console.error("❌ Fetch error:", err);
-      onReply("Sorry, I couldn't hear you. Could you please repeat that?");
+      onReply(null, true);
       isWaitingForReply = false;
     });
 }
