@@ -135,12 +135,13 @@ function sendToMake(blob, url, onReply) {
       console.log("📨 Raw response from Make:", raw);
 
       try {
+        if (!raw.trim().startsWith("{")) throw new Error("Non-JSON response");
         const json = JSON.parse(raw);
         const cleanedReply = json.reply
-          .replace(/``/g, '')
+          .replace(/```/g, '')
           .replace(/\n/g, ' ')
           .replace(/\r/g, '')
-          .replace(/"/g, "'"); // optional, avoids quote issues
+          .replace(/"/g, "'"); // avoids breaking HTML/JSON
 
         console.log("✅ Parsed reply:", cleanedReply);
         onReply(cleanedReply);
