@@ -147,10 +147,15 @@ function sendToMake(blob, url, onReply) {
         }
 
         const cleanedReply = decodedReply
-          .replace(/```/g, '')
-          .replace(/\n/g, ' ')
-          .replace(/\r/g, '')
-          .replace(/"/g, "'");
+  .replace(/```/g, '')
+  .replace(/\n/g, ' ')
+  .replace(/\r/g, '')
+  .replace(/â€™/g, "'")
+  .replace(/â€œ/g, '"')
+  .replace(/â€/g, "'")
+  .replace(/â/g, "'") // extra fallback for isolated bad chars
+  .replace(/"/g, "'"); // escape quote if needed
+
 
         console.log("✅ Decoded reply:", cleanedReply);
         onReply(cleanedReply);
