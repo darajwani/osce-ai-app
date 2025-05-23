@@ -1,3 +1,4 @@
+// Updated script.js with cleanup for AI replies
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -48,10 +49,17 @@ function showReply(replyText, isError) {
   el.style.marginTop = "10px";
   el.style.padding = "8px";
   el.style.borderRadius = "6px";
-  el.style.backgroundColor = "#f2f2f2";
-  el.innerHTML = "🧑‍⚕️ Patient: " + (isError
-    ? "Sorry, I couldn't hear you. Could you please repeat that?"
-    : replyText);
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+
+  const cleaned = isError
+    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat that again?"
+    : "🧑‍⚖️ Patient: " + replyText
+        .replace(/\(responding in character.*?\)/gi, '')
+        .replace(/\(as the simulated patient.*?\)/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+  el.innerHTML = cleaned;
   document.getElementById('chat-container').appendChild(el);
 }
 
@@ -81,6 +89,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechStart: () => {
       console.log("🟢 Speech started");
       showMicRecording(true);
+
       chunks = [];
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
 
@@ -138,19 +147,14 @@ function sendToMake(blob, url, onReply) {
         const decoded = atob(json.reply);
         const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
         const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-
-        if (!cleanedReply || cleanedReply.length < 5) {
-          onReply(null, true);
-        } else {
-          console.log("✅ Decoded reply:", cleanedReply);
-          onReply(cleanedReply);
-        }
+        console.log("✅ Decoded reply:", cleanedReply);
+        onReply(cleanedReply);
       } catch (e) {
-        console.error("❌ Failed to decode or parse:", e);
+        console.error("❌ Failed to parse/decode:", e);
         onReply(null, true);
-      } finally {
-        isWaitingForReply = false;
       }
+
+      isWaitingForReply = false;
     })
     .catch(err => {
       console.error("❌ Fetch error:", err);
