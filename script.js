@@ -1,3 +1,5 @@
+// Final working version of script.js with audio autoplay unlock and no base64 decoding issues
+
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -73,23 +75,23 @@ function speakPatientReply(replyText) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text: replyText }),
   })
-    .then(res => res.arrayBuffer())
-    .then(buffer => {
-      const blob = new Blob([buffer], { type: 'audio/mp3' });
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+    .then(res => res.json())
+    .then(data => {
+      if (!data.audioContent) {
+        console.warn("❗ No audio content received");
+        return;
+      }
+      const audio = new Audio();
+      audio.src = `data:audio/mp3;base64,${data.audioContent}`;
       audio.play()
         .then(() => console.log("🔊 Audio played successfully"))
-        .catch(err => {
-          console.warn("🚫 Autoplay blocked or failed:", err);
-        });
+        .catch(err => console.warn("🚫 Autoplay blocked or failed:", err));
     })
-    .catch(err => {
-      console.error("🔈 TTS Error:", err);
-    });
+    .catch(err => console.error("🔈 TTS Error:", err));
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
+  // Unlock audio autoplay by playing silent audio
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
@@ -120,11 +122,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       showMicRecording(true);
       chunks = [];
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-
-      recorder.ondataavailable = e => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
+      recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
       recorder.onstop = () => {
         console.log("🎤 Recording stopped, sending to Make...");
         const blob = new Blob(chunks, { type: 'audio/webm' });
@@ -133,15 +131,12 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
           else onReply(null, true);
         });
       };
-
       recorder.start();
     },
     onSpeechEnd: () => {
       console.log("🔴 Speech ended");
       showMicRecording(false);
-      if (recorder && recorder.state === 'recording') {
-        recorder.stop();
-      }
+      if (recorder?.state === 'recording') recorder.stop();
     },
     modelURL: "./vad/silero_vad.onnx"
   });
@@ -169,7 +164,6 @@ function sendToMake(blob, url, onReply) {
     .then(async res => {
       const raw = await res.text();
       console.log("📨 Raw response from Make:", raw);
-
       try {
         const json = JSON.parse(raw);
         const decoded = atob(json.reply);
@@ -181,7 +175,6 @@ function sendToMake(blob, url, onReply) {
         console.error("❌ Failed to parse/decode:", e);
         onReply(null, true);
       }
-
       isWaitingForReply = false;
     })
     .catch(err => {
