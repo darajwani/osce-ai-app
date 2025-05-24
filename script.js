@@ -73,23 +73,11 @@ function speakPatientReply(replyText) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text: replyText }),
   })
-    .then(res => res.json())
-    .then(data => {
-      if (!data.audioContent) {
-        console.warn("❗ No audio content received");
-        return;
-      }
-
-      const binary = atob(data.audioContent);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-
-      const blob = new Blob([bytes], { type: 'audio/mp3' });
-      const audioUrl = URL.createObjectURL(blob);
-
-      const audio = new Audio(audioUrl);
+    .then(res => res.arrayBuffer())
+    .then(buffer => {
+      const blob = new Blob([buffer], { type: 'audio/mp3' });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
       audio.play()
         .then(() => console.log("🔊 Audio played successfully"))
         .catch(err => {
@@ -102,7 +90,6 @@ function speakPatientReply(replyText) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  // Prime audio system silently (user gesture workaround)
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
