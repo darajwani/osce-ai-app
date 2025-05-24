@@ -4,34 +4,49 @@ exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      body: 'Method Not Allowed',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Method not allowed. Use POST.' }),
     };
   }
 
-  const credentials = JSON.parse(process.env.GOOGLE_TTS_KEY);
+  let credentials;
+  try {
+    credentials = JSON.parse(process.env.GOOGLE_TTS_KEY);
+  } catch (e) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Invalid or missing GOOGLE_TTS_KEY.' }),
+    };
+  }
+
   const client = new textToSpeech.TextToSpeechClient({ credentials });
 
-  const { text } = JSON.parse(event.body);
-  if (!text) {
+  try {
+    const { text } = JSON.parse(event.body);
+    if (!text) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Missing `text` in request body.' }),
+      };
+    }
+
+    const [response] = await client.synthesizeSpeech({
+      input: { ssml: `<speak><prosody rate="medium">${text}</prosody></speak>` },
+      voice: { languageCode: 'en-US', name: 'en-US-Wavenet-D' },
+      audioConfig: { audioEncoding: 'MP3' },
+    });
+
     return {
-      statusCode: 400,
-      body: 'Missing text',
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioContent: response.audioContent }),
+      isBase64Encoded: false, // Leave this false because we're sending JSON, not binary!
+    };
+  } catch (error) {
+    console.error("TTS Error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message || 'Unknown error' }),
     };
   }
-
-  const [response] = await client.synthesizeSpeech({
-    input: { ssml: `<speak><prosody rate="medium">${text}</prosody></speak>` },
-    voice: { languageCode: 'en-US', name: 'en-US-Wavenet-D' },
-    audioConfig: { audioEncoding: 'MP3' }
-  });
-
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'audio/mpeg',
-      'Access-Control-Allow-Origin': '*'
-    },
-    body: response.audioContent,
-    isBase64Encoded: true  // ✅ tells Netlify this is binary base64 audio
-  };
 };
