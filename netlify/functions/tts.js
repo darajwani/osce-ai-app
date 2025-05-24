@@ -15,6 +15,7 @@ exports.handler = async function (event) {
   } catch (e) {
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Invalid or missing GOOGLE_TTS_KEY.' }),
     };
   }
@@ -26,6 +27,7 @@ exports.handler = async function (event) {
     if (!text) {
       return {
         statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Missing `text` in request body.' }),
       };
     }
@@ -36,16 +38,18 @@ exports.handler = async function (event) {
       audioConfig: { audioEncoding: 'MP3' },
     });
 
+    const base64Audio = Buffer.from(response.audioContent).toString('base64');
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audioContent: response.audioContent }),
-      isBase64Encoded: false, // Leave this false because we're sending JSON, not binary!
+      body: JSON.stringify({ audioContent: base64Audio }),
     };
   } catch (error) {
     console.error("TTS Error:", error);
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: error.message || 'Unknown error' }),
     };
   }
