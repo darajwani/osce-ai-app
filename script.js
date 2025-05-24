@@ -1,4 +1,5 @@
-// Updated script.js with cleanup for AI replies
+
+// Updated script.js with cleanup for AI replies and TTS voice playback
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -61,6 +62,28 @@ function showReply(replyText, isError) {
 
   el.innerHTML = cleaned;
   document.getElementById('chat-container').appendChild(el);
+
+  if (!isError && replyText) {
+    speakPatientReply(replyText);
+  }
+}
+
+function speakPatientReply(replyText) {
+  fetch('/.netlify/functions/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text: replyText }),
+  })
+    .then(res => res.json())
+    .then(data => {
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      audio.play();
+    })
+    .catch(err => {
+      console.error("🔈 TTS Error:", err);
+    });
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
