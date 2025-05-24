@@ -80,9 +80,7 @@ function speakPatientReply(replyText) {
         return;
       }
 
-      const blob = new Blob([Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.play()
         .then(() => console.log("🔊 Audio played successfully"))
         .catch(err => {
@@ -95,6 +93,7 @@ function speakPatientReply(replyText) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
+  // Prime audio system with a short silent sound
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
