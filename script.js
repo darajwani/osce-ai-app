@@ -3,9 +3,15 @@ let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
+let hasUserInteracted = false; // NEW LINE
+
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
+
+document.addEventListener('click', () => { // NEW LISTENER
+  hasUserInteracted = true;
+});
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
@@ -65,7 +71,9 @@ function showReply(replyText, isError) {
     console.log("🔊 Calling TTS for:", replyText);
     speakPatientReply(replyText);
   }
-}function speakPatientReply(replyText) {
+}
+
+function speakPatientReply(replyText) {
   fetch('/.netlify/functions/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -77,20 +85,23 @@ function showReply(replyText, isError) {
         console.warn("❗ No audio content received");
         return;
       }
+
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      // Try to autoplay on user interaction
-      audio.play().then(() => {
-        console.log("🔊 Audio played successfully");
-      }).catch(err => {
-        console.warn("🚫 Autoplay blocked or failed:", err);
+      if (hasUserInteracted) {
+        audio.play()
+          .then(() => console.log("🔊 Audio played successfully"))
+          .catch(err => {
+            console.warn("🚫 Audio play failed:", err);
+            alert("⚠️ Audio blocked by browser. Please click anywhere on the page before starting.");
+          });
+      } else {
         alert("⚠️ Audio blocked by browser. Please click anywhere on the page before starting.");
-      });
+      }
     })
     .catch(err => {
       console.error("🔈 TTS Error:", err);
     });
 }
-
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
