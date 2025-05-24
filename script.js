@@ -1,3 +1,4 @@
+
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -32,7 +33,7 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    timerDisplay.textContent = \`\${minutes}:\${seconds < 10 ? "0" : ""}\${seconds}\`;
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
@@ -80,15 +81,13 @@ function speakPatientReply(replyText) {
         return;
       }
 
-      const audio = new Audio();
-      audio.src = `data:audio/mp3;base64,${data.audioContent}`;
-      audio.type = 'audio/mp3';
-
+      const blob = new Blob([Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
       audio.play()
         .then(() => console.log("🔊 Audio played successfully"))
         .catch(err => {
           console.warn("🚫 Autoplay blocked or failed:", err);
-          // Silent fail — no alert to user
         });
     })
     .catch(err => {
@@ -97,9 +96,10 @@ function speakPatientReply(replyText) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  // Prime audio system here (counts as user interaction)
-  new Audio().play().catch(() => {});
-  
+  // Prime audio system with silent short play
+  const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
+  initAudio.play().catch(() => {});
+
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
     currentScenario = randomScenario;
