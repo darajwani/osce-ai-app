@@ -1,3 +1,7 @@
-"dependencies": {
-  "@google-cloud/text-to-speech": "4.2.0"
+{
+  "name": "osce-ai-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^4.2.0"
+  }
 }
