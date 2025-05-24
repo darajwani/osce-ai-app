@@ -1,5 +1,3 @@
-
-// Updated script.js with cleanup for AI replies and TTS voice playback
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -79,9 +77,15 @@ function speakPatientReply(replyText) {
   })
     .then(res => res.json())
     .then(data => {
-      console.log("🧪 TTS Audio Content:", data.audioContent);
+      if (!data.audioContent) {
+        console.warn("❗ No audio content received");
+        return;
+      }
+      console.log("🧪 TTS Audio Content:", data.audioContent.slice(0, 50) + "...");
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      audio.play();
+      audio.play().catch(err => {
+        console.warn("Autoplay blocked or failed:", err);
+      });
     })
     .catch(err => {
       console.error("🔈 TTS Error:", err);
