@@ -64,6 +64,7 @@ function showReply(replyText, isError) {
   document.getElementById('chat-container').appendChild(el);
 
   if (!isError && replyText) {
+    console.log("🔊 Calling TTS for:", replyText);
     speakPatientReply(replyText);
   }
 }
@@ -78,6 +79,7 @@ function speakPatientReply(replyText) {
   })
     .then(res => res.json())
     .then(data => {
+      console.log("🧪 TTS Audio Content:", data.audioContent);
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.play();
     })
