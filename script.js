@@ -65,14 +65,10 @@ function showReply(replyText, isError) {
     console.log("🔊 Calling TTS for:", replyText);
     speakPatientReply(replyText);
   }
-}
-
-function speakPatientReply(replyText) {
+}function speakPatientReply(replyText) {
   fetch('/.netlify/functions/tts', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text: replyText }),
   })
     .then(res => res.json())
@@ -81,16 +77,20 @@ function speakPatientReply(replyText) {
         console.warn("❗ No audio content received");
         return;
       }
-      console.log("🧪 TTS Audio Content:", data.audioContent.slice(0, 50) + "...");
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      audio.play().catch(err => {
-        console.warn("Autoplay blocked or failed:", err);
+      // Try to autoplay on user interaction
+      audio.play().then(() => {
+        console.log("🔊 Audio played successfully");
+      }).catch(err => {
+        console.warn("🚫 Autoplay blocked or failed:", err);
+        alert("⚠️ Audio blocked by browser. Please click anywhere on the page before starting.");
       });
     })
     .catch(err => {
       console.error("🔈 TTS Error:", err);
     });
 }
+
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
