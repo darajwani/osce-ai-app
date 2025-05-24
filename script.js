@@ -3,15 +3,9 @@ let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
-let hasUserInteracted = false; // NEW LINE
-
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
-
-document.addEventListener('click', () => { // NEW LISTENER
-  hasUserInteracted = true;
-});
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
@@ -86,17 +80,16 @@ function speakPatientReply(replyText) {
         return;
       }
 
-      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      if (hasUserInteracted) {
-        audio.play()
-          .then(() => console.log("🔊 Audio played successfully"))
-          .catch(err => {
-            console.warn("🚫 Audio play failed:", err);
-            alert("⚠️ Audio blocked by browser. Please click anywhere on the page before starting.");
-          });
-      } else {
-        alert("⚠️ Audio blocked by browser. Please click anywhere on the page before starting.");
-      }
+      const audio = new Audio();
+      audio.src = `data:audio/mp3;base64,${data.audioContent}`;
+      audio.type = 'audio/mp3';
+
+      audio.play()
+        .then(() => console.log("🔊 Audio played successfully"))
+        .catch(err => {
+          console.warn("🚫 Autoplay blocked or failed:", err);
+          // Silent fail — no alert to user
+        });
     })
     .catch(err => {
       console.error("🔈 TTS Error:", err);
@@ -104,6 +97,9 @@ function speakPatientReply(replyText) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
+  // Prime audio system here (counts as user interaction)
+  new Audio().play().catch(() => {});
+  
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
     currentScenario = randomScenario;
@@ -129,7 +125,6 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     onSpeechStart: () => {
       console.log("🟢 Speech started");
       showMicRecording(true);
-
       chunks = [];
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
 
