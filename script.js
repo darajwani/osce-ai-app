@@ -1,4 +1,3 @@
-
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -33,7 +32,7 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-    timerDisplay.textContent = \`\${minutes}:\${seconds < 10 ? "0" : ""}\${seconds}\`;
+    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
@@ -96,7 +95,6 @@ function speakPatientReply(replyText) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  // Prime audio system with silent short play
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
