@@ -1,4 +1,4 @@
-// Final working version of script.js with audio autoplay unlock and no base64 decoding issues
+// Final updated script.js with autoplay fix and improved audio handling
 
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -81,8 +81,10 @@ function speakPatientReply(replyText) {
         console.warn("❗ No audio content received");
         return;
       }
-      const audio = new Audio();
+      const audio = document.createElement('audio');
       audio.src = `data:audio/mp3;base64,${data.audioContent}`;
+      audio.type = 'audio/mpeg';
+      document.body.appendChild(audio);
       audio.play()
         .then(() => console.log("🔊 Audio played successfully"))
         .catch(err => console.warn("🚫 Autoplay blocked or failed:", err));
@@ -91,7 +93,6 @@ function speakPatientReply(replyText) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  // Unlock audio autoplay by playing silent audio
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
