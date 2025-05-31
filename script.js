@@ -1,5 +1,3 @@
-// Final updated script.js with fix for overlapping AI audio replies
-
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -23,9 +21,12 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const [id, title, prompt_text] = row.split(",");
-        return { id: id?.trim(), title: title?.trim(), prompt_text: prompt_text?.trim() };
+        const [id, ...rest] = row.split(",");
+        const title = rest[0]?.trim();
+        const prompt_text = rest.slice(1).join(",").trim(); // handles commas in prompt
+        return { id: id?.trim(), title, prompt_text };
       }).filter(s => s.title && s.id);
+      console.log("✅ Fetched Scenarios:", scenarios);
       callback(scenarios);
     });
 }
@@ -57,24 +58,25 @@ function showReply(replyText, isError) {
   const cleaned = isError
     ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat that again?"
     : "🧑‍⚖️ Patient: " + replyText
-        .replace(/\(responding in character.*?\)/gi, '')
-        .replace(/\(as the simulated patient.*?\)/gi, '')
+        .replace(/\[(.*?)\]/g, '') // remove stage directions like [points]
+        .replace(/\(.*?\)/g, '')   // remove (in character...) etc.
         .replace(/\s+/g, ' ')
         .trim();
 
   el.innerHTML = cleaned;
   document.getElementById('chat-container').appendChild(el);
+  document.getElementById('chat-container').style.display = 'block';
 
   if (!isError && replyText) {
-    queueAndSpeakReply(replyText);
+    queueAndSpeakReply(cleaned);
   }
 }
 
-// ✅ Fix for overlapping voice playback
+// Queued audio playback (no overlap)
 function queueAndSpeakReply(text) {
   audioQueue.push(text);
   if (!isSpeaking) {
-    playNextInQueue();
+    setTimeout(playNextInQueue, 100); // slightly delay start
   }
 }
 
@@ -96,14 +98,14 @@ function playNextInQueue() {
     .then(data => {
       if (!data.audioContent) {
         isSpeaking = false;
-        playNextInQueue(); // skip
+        playNextInQueue();
         return;
       }
 
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.play()
         .then(() => console.log("🔊 Playing:", text))
-        .catch(err => console.warn("❌ Audio error:", err));
+        .catch(err => console.warn("❌ Audio play error:", err));
 
       audio.onended = () => {
         isSpeaking = false;
@@ -118,6 +120,7 @@ function playNextInQueue() {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
+  console.log("🎬 Start button clicked");
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
@@ -128,6 +131,7 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
     document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
+    document.getElementById("chat-container").style.display = "none";
     startTimer(300);
     sessionEndTime = Date.now() + 5 * 60 * 1000;
     isRecording = true;
