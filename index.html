@@ -40,7 +40,7 @@
     <h2 id="scenario-title"></h2>
     <p id="scenario-text"></p>
     <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
-    <div id="chat-container" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; max-height:260px; overflow-y:auto;">
+    <div id="chat-container" style="display:none; margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; max-height:260px; overflow-y:auto;">
       <b>AI Patient Replies:</b><br>
     </div>
   </div>
@@ -48,10 +48,5 @@
   <!-- ONNX Runtime -->
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
 
-  <!-- VAD (self-hosted) -->
-  <script src="./vad/bundle.min.js"></script>
-
-  <!-- Your main logic -->
-  <script src="script.js"></script>
-</body>
-</html>
+  <!-- VAD -->
+  <sc
