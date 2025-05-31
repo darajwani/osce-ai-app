@@ -7,7 +7,6 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-// ✅ Your correct Google Sheets CSV link (FinalScenarios tab)
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 function showMicRecording(isRec) {
@@ -22,15 +21,10 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const cells = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // handles commas inside quotes
-        const [id, title, prompt_text] = cells;
-        return {
-          id: id?.trim(),
-          title: title?.trim(),
-          prompt_text: prompt_text?.trim().replace(/^"|"$/g, '')
-        };
+        const cols = row.split(",");
+        const [id, title, prompt_text, category, instructions, emotion] = cols.map(x => x.trim());
+        return { id, title, prompt_text, category, instructions, emotion };
       }).filter(s => s.title && s.id);
-      console.log("✅ Loaded Scenarios:", scenarios);
       callback(scenarios);
     });
 }
@@ -59,30 +53,31 @@ function showReply(replyText, isError) {
   el.style.borderRadius = "6px";
   el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
 
+  const visible = isError
+    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
+    : "🧑‍⚕️ Patient: " + replyText
+        .replace(/\s+/g, ' ')
+        .trim();
+
   const voiceCleaned = replyText
-    .replace(/\[(.*?)\]/g, '') // remove [stage actions]
-    .replace(/\(.*?\)/g, '')   // remove (directions)
+    .replace(/\[(.*?)\]/g, '')  // remove stage directions
+    .replace(/\(.*?\)/g, '')    // remove (notes)
+    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')  // remove filler words
+    .replace(/🧑‍⚕️|🧑‍⚖️|👩‍⚕️|🧑‍🦰|👨‍⚕️|👨‍🦰|👩‍🦰/g, '') // remove emojis
     .replace(/\s+/g, ' ')
     .trim();
 
-  const displayText = isError
-    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat that again?"
-    : "👤 Patient: " + voiceCleaned;
-
-  el.innerHTML = displayText;
+  el.innerHTML = visible;
   document.getElementById('chat-container').appendChild(el);
-  document.getElementById('chat-container').style.display = 'block';
 
-  if (!isError && voiceCleaned) {
-    queueAndSpeakReply(voiceCleaned); // 🔇 don't include emoji or label
+  if (!isError && replyText) {
+    queueAndSpeakReply(voiceCleaned);
   }
 }
 
 function queueAndSpeakReply(text) {
   audioQueue.push(text);
-  if (!isSpeaking) {
-    setTimeout(playNextInQueue, 100);
-  }
+  if (!isSpeaking) playNextInQueue();
 }
 
 function playNextInQueue() {
@@ -90,14 +85,16 @@ function playNextInQueue() {
     isSpeaking = false;
     return;
   }
-
   const text = audioQueue.shift();
   isSpeaking = true;
 
   fetch('/.netlify/functions/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ 
+      text,
+      emotion: currentScenario?.emotion || "neutral" 
+    }),
   })
     .then(res => res.json())
     .then(data => {
@@ -106,28 +103,22 @@ function playNextInQueue() {
         playNextInQueue();
         return;
       }
-
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      audio.play()
-        .then(() => console.log("🔊 Playing:", text))
-        .catch(err => console.warn("❌ Audio play error:", err));
-
+      audio.play().catch(err => console.warn("Audio error:", err));
       audio.onended = () => {
         isSpeaking = false;
         playNextInQueue();
       };
     })
     .catch(err => {
-      console.warn("❌ TTS failed:", err);
+      console.warn("TTS error:", err);
       isSpeaking = false;
       playNextInQueue();
     });
 }
 
+// Step 1: Load Scenario (Only)
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
-  initAudio.play().catch(() => {});
-
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
     currentScenario = randomScenario;
@@ -135,12 +126,18 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
     document.getElementById("scenario-text").textContent = randomScenario.prompt_text;
     document.getElementById("scenario-box").style.display = "block";
     document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
-    document.getElementById("chat-container").style.display = "none";
-    startTimer(300);
-    sessionEndTime = Date.now() + 5 * 60 * 1000;
-    isRecording = true;
-    startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
+    document.getElementById("start-station-btn").style.display = "inline-block";
   });
+});
+
+// Step 2: Start Station (timer + voice)
+document.getElementById("start-station-btn").addEventListener("click", () => {
+  document.getElementById("start-station-btn").style.display = "none";
+  startTimer(300);
+  sessionEndTime = Date.now() + 5 * 60 * 1000;
+  isRecording = true;
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
+  document.getElementById("chat-container").style.display = "block";
 });
 
 async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
@@ -152,13 +149,11 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   const myvad = await vad.MicVAD.new({
     onSpeechStart: () => {
-      console.log("🟢 Speech started");
       showMicRecording(true);
       chunks = [];
       recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
       recorder.onstop = () => {
-        console.log("🎤 Recording stopped, sending to Make...");
         const blob = new Blob(chunks, { type: 'audio/webm' });
         sendToMake(blob, makeWebhookUrl, (reply, error) => {
           if (reply) onReply(reply);
@@ -168,7 +163,6 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
       recorder.start();
     },
     onSpeechEnd: () => {
-      console.log("🔴 Speech ended");
       showMicRecording(false);
       if (recorder?.state === 'recording') recorder.stop();
     },
@@ -197,22 +191,20 @@ function sendToMake(blob, url, onReply) {
   fetch(url, { method: 'POST', body: formData })
     .then(async res => {
       const raw = await res.text();
-      console.log("📨 Raw response from Make:", raw);
       try {
         const json = JSON.parse(raw);
         const decoded = atob(json.reply);
         const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
         const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-        console.log("✅ Decoded reply:", cleanedReply);
         onReply(cleanedReply);
       } catch (e) {
-        console.error("❌ Failed to parse/decode:", e);
+        console.error("Failed to decode:", e);
         onReply(null, true);
       }
       isWaitingForReply = false;
     })
     .catch(err => {
-      console.error("❌ Fetch error:", err);
+      console.error("Fetch error:", err);
       onReply(null, true);
       isWaitingForReply = false;
     });
