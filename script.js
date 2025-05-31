@@ -7,7 +7,8 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
+// ✅ NEW Google Sheet CSV link for FinalScenarios
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
@@ -23,10 +24,10 @@ function getScenarios(callback) {
       const scenarios = rows.map(row => {
         const [id, ...rest] = row.split(",");
         const title = rest[0]?.trim();
-        const prompt_text = rest.slice(1).join(",").trim(); // handles commas in prompt
+        const prompt_text = rest.slice(1).join(",").trim(); // Handles commas
         return { id: id?.trim(), title, prompt_text };
       }).filter(s => s.title && s.id);
-      console.log("✅ Fetched Scenarios:", scenarios);
+      console.log("✅ Loaded Scenarios:", scenarios);
       callback(scenarios);
     });
 }
@@ -57,7 +58,7 @@ function showReply(replyText, isError) {
 
   const cleaned = isError
     ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat that again?"
-    : "🧑‍⚖️ Patient: " + replyText
+    : "👤 Patient: " + replyText
         .replace(/\[(.*?)\]/g, '') // remove stage directions like [points]
         .replace(/\(.*?\)/g, '')   // remove (in character...) etc.
         .replace(/\s+/g, ' ')
@@ -72,11 +73,10 @@ function showReply(replyText, isError) {
   }
 }
 
-// Queued audio playback (no overlap)
 function queueAndSpeakReply(text) {
   audioQueue.push(text);
   if (!isSpeaking) {
-    setTimeout(playNextInQueue, 100); // slightly delay start
+    setTimeout(playNextInQueue, 100);
   }
 }
 
