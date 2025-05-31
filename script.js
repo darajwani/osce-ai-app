@@ -7,7 +7,7 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-// ✅ NEW Google Sheet CSV link for FinalScenarios
+// ✅ Your correct Google Sheets CSV link (FinalScenarios tab)
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 function showMicRecording(isRec) {
@@ -22,10 +22,13 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const [id, ...rest] = row.split(",");
-        const title = rest[0]?.trim();
-        const prompt_text = rest.slice(1).join(",").trim(); // Handles commas
-        return { id: id?.trim(), title, prompt_text };
+        const cells = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // handles commas inside quotes
+        const [id, title, prompt_text] = cells;
+        return {
+          id: id?.trim(),
+          title: title?.trim(),
+          prompt_text: prompt_text?.trim().replace(/^"|"$/g, '')
+        };
       }).filter(s => s.title && s.id);
       console.log("✅ Loaded Scenarios:", scenarios);
       callback(scenarios);
@@ -56,20 +59,22 @@ function showReply(replyText, isError) {
   el.style.borderRadius = "6px";
   el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
 
-  const cleaned = isError
-    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat that again?"
-    : "👤 Patient: " + replyText
-        .replace(/\[(.*?)\]/g, '') // remove stage directions like [points]
-        .replace(/\(.*?\)/g, '')   // remove (in character...) etc.
-        .replace(/\s+/g, ' ')
-        .trim();
+  const voiceCleaned = replyText
+    .replace(/\[(.*?)\]/g, '') // remove [stage actions]
+    .replace(/\(.*?\)/g, '')   // remove (directions)
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  el.innerHTML = cleaned;
+  const displayText = isError
+    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat that again?"
+    : "👤 Patient: " + voiceCleaned;
+
+  el.innerHTML = displayText;
   document.getElementById('chat-container').appendChild(el);
   document.getElementById('chat-container').style.display = 'block';
 
-  if (!isError && replyText) {
-    queueAndSpeakReply(cleaned);
+  if (!isError && voiceCleaned) {
+    queueAndSpeakReply(voiceCleaned); // 🔇 don't include emoji or label
   }
 }
 
@@ -120,7 +125,6 @@ function playNextInQueue() {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  console.log("🎬 Start button clicked");
   const initAudio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...");
   initAudio.play().catch(() => {});
 
