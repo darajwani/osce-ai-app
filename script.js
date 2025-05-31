@@ -1,10 +1,12 @@
-// Final updated script.js with autoplay fix and improved audio handling
+// Final updated script.js with fix for overlapping AI audio replies
 
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
+let isSpeaking = false;
+let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?output=csv';
@@ -64,32 +66,55 @@ function showReply(replyText, isError) {
   document.getElementById('chat-container').appendChild(el);
 
   if (!isError && replyText) {
-    console.log("🔊 Calling TTS for:", replyText);
-    speakPatientReply(replyText);
+    queueAndSpeakReply(replyText);
   }
 }
 
-function speakPatientReply(replyText) {
+// ✅ Fix for overlapping voice playback
+function queueAndSpeakReply(text) {
+  audioQueue.push(text);
+  if (!isSpeaking) {
+    playNextInQueue();
+  }
+}
+
+function playNextInQueue() {
+  if (audioQueue.length === 0) {
+    isSpeaking = false;
+    return;
+  }
+
+  const text = audioQueue.shift();
+  isSpeaking = true;
+
   fetch('/.netlify/functions/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: replyText }),
+    body: JSON.stringify({ text }),
   })
     .then(res => res.json())
     .then(data => {
       if (!data.audioContent) {
-        console.warn("❗ No audio content received");
+        isSpeaking = false;
+        playNextInQueue(); // skip
         return;
       }
-      const audio = document.createElement('audio');
-      audio.src = `data:audio/mp3;base64,${data.audioContent}`;
-      audio.type = 'audio/mpeg';
-      document.body.appendChild(audio);
+
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.play()
-        .then(() => console.log("🔊 Audio played successfully"))
-        .catch(err => console.warn("🚫 Autoplay blocked or failed:", err));
+        .then(() => console.log("🔊 Playing:", text))
+        .catch(err => console.warn("❌ Audio error:", err));
+
+      audio.onended = () => {
+        isSpeaking = false;
+        playNextInQueue();
+      };
     })
-    .catch(err => console.error("🔈 TTS Error:", err));
+    .catch(err => {
+      console.warn("❌ TTS failed:", err);
+      isSpeaking = false;
+      playNextInQueue();
+    });
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
