@@ -63,12 +63,12 @@ function populateScenarioDropdown(scenarios) {
 }
 
 function parseMultiActorScript(script) {
-  const lines = script.split(/\n|\\n/).map(l => l.trim()).filter(Boolean);
+  const parts = script.split(/(?=\[(MOTHER|CHILD)\])/gi).map(s => s.trim()).filter(Boolean);
   const sequence = [];
-  for (const line of lines) {
-    if (line.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
-    const match = line.match(/^\[(.*?)\]\s*(.*)$/);
+  for (const part of parts) {
+    const match = part.match(/^\[(.*?)\]\s*(.*)/s);
     if (match) sequence.push({ speaker: match[1].toUpperCase(), text: match[2] });
+    if (part.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
   }
   return sequence;
 }
