@@ -1,8 +1,8 @@
-// ✅ Final, fixed script.js with working dropdown and VAD
+// ✅ Final working script.js with dual actor support (station 64) + VAD + clean dropdown
 
 let isWaitingForReply = false;
 let currentScenario = null;
-let scenarios = [];
+let allScenarios = [];
 let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
@@ -28,7 +28,7 @@ function getScenarios(callback) {
     .then(res => res.text())
     .then(csv => {
       const rows = csv.split("\n").slice(1);
-      scenarios = rows.map(row => {
+      allScenarios = rows.map(row => {
         const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
           id: cols[0] || '',
@@ -45,20 +45,19 @@ function getScenarios(callback) {
           pitch: parseFloat(cols[11]) || 0
         };
       }).filter(s => s.title && s.id);
-      populateDropdown();
-      if (callback) callback(scenarios);
+      populateScenarioDropdown(allScenarios);
+      if (callback) callback(allScenarios);
     });
 }
 
-function populateDropdown() {
+function populateScenarioDropdown(scenarios) {
   const dropdown = document.getElementById("scenario-dropdown");
-  if (!dropdown) return;
   dropdown.innerHTML = '<option value="">-- Select a scenario --</option>';
-  scenarios.forEach((s, i) => {
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = s.title;
-    dropdown.appendChild(opt);
+  scenarios.forEach(s => {
+    const option = document.createElement("option");
+    option.value = s.id;
+    option.textContent = `${s.id} - ${s.title}`;
+    dropdown.appendChild(option);
   });
 }
 
@@ -121,17 +120,43 @@ function showReplyFromScript(script) {
   }
 }
 
+function showReply(replyText, isError) {
+  const el = document.createElement('p');
+  el.style.marginTop = "10px";
+  el.style.padding = "8px";
+  el.style.borderRadius = "6px";
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+
+  const visible = isError
+    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
+    : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+
+  const voiceCleaned = replyText
+    .replace(/\[(.*?)\]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
+    .replace(/🧑‍⚕️|🧑‍⚖️|👩‍⚕️|🧑‍🦰|👨‍⚕️|👨‍🦰|👩‍🦰/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  el.innerHTML = visible;
+  document.getElementById('chat-container').appendChild(el);
+
+  if (!isError && replyText) {
+    queueAndSpeakReply(voiceCleaned);
+  }
+}
+
 document.getElementById("start-random-btn").addEventListener("click", () => {
-  if (scenarios.length === 0) return;
-  const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+  if (allScenarios.length === 0) return;
+  const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
   loadScenario(randomScenario);
 });
 
 document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
-  const selectedIndex = e.target.value;
-  if (!selectedIndex) return;
-  const selectedScenario = scenarios[parseInt(selectedIndex)];
-  loadScenario(selectedScenario);
+  const selectedId = e.target.value;
+  const selectedScenario = allScenarios.find(s => s.id === selectedId);
+  if (selectedScenario) loadScenario(selectedScenario);
 });
 
 function loadScenario(scenario) {
@@ -139,20 +164,25 @@ function loadScenario(scenario) {
   document.getElementById("scenario-title").textContent = scenario.title;
   document.getElementById("scenario-text").textContent = scenario.prompt_text;
   document.getElementById("scenario-box").style.display = "block";
-  document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
+  document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
   document.getElementById("start-station-btn").style.display = "inline-block";
   document.getElementById("stop-station-btn").style.display = "none";
+  document.getElementById("chat-container").style.display = "none";
 }
 
 document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
+  document.getElementById("chat-container").style.display = "block";
+
   startTimer(300);
   sessionEndTime = Date.now() + 5 * 60 * 1000;
   isRecording = true;
   startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
-  document.getElementById("chat-container").style.display = "block";
-  if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
+
+  if (currentScenario?.id === '64') {
+    showReplyFromScript(currentScenario.script);
+  }
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => {
@@ -179,8 +209,10 @@ function startTimer(duration) {
 async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   lastMediaStream = stream;
+
   let recorder = null;
   let chunks = [];
+
   const myvad = await vad.MicVAD.new({
     onSpeechStart: () => {
       showMicRecording(true);
@@ -202,7 +234,9 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
     },
     modelURL: "./vad/silero_vad.onnx"
   });
+
   myvad.start();
+
   setTimeout(() => {
     isRecording = false;
     myvad.destroy();
@@ -214,10 +248,12 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) return;
   isWaitingForReply = true;
+
   const formData = new FormData();
   formData.append('file', blob, 'audio.webm');
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
+
   fetch(url, { method: 'POST', body: formData })
     .then(async res => {
       const raw = await res.text();
@@ -228,17 +264,18 @@ function sendToMake(blob, url, onReply) {
         const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
         onReply(cleanedReply);
       } catch (e) {
-        console.error("Decode error", e);
+        console.error("Failed to decode:", e);
         onReply(null, true);
       }
       isWaitingForReply = false;
     })
     .catch(err => {
-      console.error("Fetch error", err);
+      console.error("Fetch error:", err);
       onReply(null, true);
       isWaitingForReply = false;
     });
 }
 
-// Initialize on page load
-getScenarios();
+window.addEventListener('DOMContentLoaded', () => {
+  getScenarios();
+});
