@@ -1,4 +1,4 @@
-// ✅ Stable version with dual-speaker support and safe scenario loading
+// ✅ Fixed for Standard Google TTS (non-WaveNet) — working dual-speaker, stable loading
 
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -10,22 +10,20 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcCIw-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTCcIw-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
   "MOTHER": {
     gender: "FEMALE",
     languageCode: "en-GB",
-    name: "en-GB-Wavenet-F",
     pitch: -2,
-    speakingRate: 0.9
+    speakingRate: 0.95
   },
   "CHILD": {
     gender: "FEMALE",
     languageCode: "en-GB",
-    name: "en-GB-Wavenet-C",
     pitch: 4,
-    speakingRate: 1.2
+    speakingRate: 1.15
   }
 };
 
@@ -41,7 +39,7 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
+        const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
           id: cols[0] || '',
           title: cols[1] || '',
@@ -56,7 +54,7 @@ function getScenarios(callback) {
           speakingRate: parseFloat(cols[10]) || 1,
           pitch: parseFloat(cols[11]) || 0
         };
-      }).filter(s => s.id && s.title);
+      }).filter(s => s.title && s.id);
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
       if (callback) callback(scenarios);
@@ -75,12 +73,12 @@ function populateScenarioDropdown(scenarios) {
 }
 
 function parseMultiActorScript(script) {
+  const parts = script.split(/\[(.*?)\]/).filter(Boolean);
   const sequence = [];
-  const matches = script.matchAll(/\[(.*?)\]\s*(.*?)(?=\s*\[|$)/gs);
-  for (const match of matches) {
-    const speaker = match[1]?.toUpperCase().trim();
-    const text = match[2]?.trim();
-    if (speaker && text && !speaker.includes("DOCTOR")) {
+  for (let i = 0; i < parts.length - 1; i += 2) {
+    const speaker = parts[i].toUpperCase().trim();
+    const text = parts[i + 1].split(/---DOCTOR-INTERVENTION---/)[0].trim();
+    if (speaker && text) {
       sequence.push({ speaker, text });
     }
   }
@@ -173,3 +171,20 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
 document.getElementById("stop-station-btn").addEventListener("click", () => {
   location.reload();
 });
+
+function startTimer(duration) {
+  let timer = duration;
+  const timerDisplay = document.getElementById("timer");
+  const interval = setInterval(() => {
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    if (--timer < 0) {
+      clearInterval(interval);
+      alert("OSCE session complete!");
+      isRecording = false;
+      showMicRecording(false);
+      if (lastMediaStream) lastMediaStream.getTracks().forEach(t => t.stop());
+    }
+  }, 1000);
+}
