@@ -15,6 +15,13 @@ const voices = {
   Parent: { gender: 'FEMALE', languageCode: 'en-GB', speakingRate: 0.95, pitch: 0 }
 };
 
+window.addEventListener("DOMContentLoaded", () => {
+  getScenarios((scenarios) => {
+    allScenarios = scenarios;
+    populateScenarioDropdown(allScenarios);
+  });
+});
+
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
   if (!mic) return;
@@ -26,7 +33,7 @@ function getScenarios(callback) {
     .then(res => res.text())
     .then(csv => {
       const rows = csv.split("\n").slice(1);
-      allScenarios = rows.map(row => {
+      const scenarios = rows.map(row => {
         const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
           id: cols[0] || '',
@@ -43,14 +50,12 @@ function getScenarios(callback) {
           pitch: parseFloat(cols[11]) || 0
         };
       }).filter(s => s.title && s.id);
-      callback(allScenarios);
-      populateScenarioDropdown(allScenarios);
+      callback(scenarios);
     });
 }
 
 function populateScenarioDropdown(scenarios) {
   const dropdown = document.getElementById("scenario-dropdown");
-  if (!dropdown) return;
   dropdown.innerHTML = '<option value="">-- Select a scenario --</option>';
   scenarios.forEach(s => {
     const option = document.createElement("option");
@@ -61,30 +66,37 @@ function populateScenarioDropdown(scenarios) {
 }
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
+  if (allScenarios.length === 0) return alert("Scenarios not loaded yet.");
   const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
   loadScenario(randomScenario);
 });
 
-document.getElementById("scenario-dropdown")?.addEventListener("change", (e) => {
-  const selected = allScenarios.find(s => s.id === e.target.value);
-  if (selected) loadScenario(selected);
+document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
+  const selectedId = e.target.value;
+  const selectedScenario = allScenarios.find(s => s.id === selectedId);
+  if (selectedScenario) loadScenario(selectedScenario);
 });
 
 function loadScenario(scenario) {
   currentScenario = scenario;
   isRecording = false;
   showMicRecording(false);
+
   document.getElementById("scenario-title").textContent = scenario.title;
   document.getElementById("scenario-text").textContent = scenario.prompt_text;
   document.getElementById("scenario-box").style.display = "block";
   document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
-  document.getElementById("start-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "none";
+
+  document.getElementById("start-station-btn").style.display = "inline-block";
+  document.getElementById("stop-station-btn").style.display = "none";
 }
 
 document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
+  document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
+
   startTimer(300);
   sessionEndTime = Date.now() + 5 * 60 * 1000;
   isRecording = true;
@@ -102,7 +114,7 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("stop-station-btn")?.addEventListener("click", () => {
+document.getElementById("stop-station-btn").addEventListener("click", () => {
   location.reload();
 });
 
