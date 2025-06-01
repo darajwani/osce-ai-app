@@ -1,3 +1,5 @@
+// ✅ Updated script.js with dynamic emotion-based pitch/speed mapping
+
 let isWaitingForReply = false;
 let currentScenario = null;
 let sessionEndTime;
@@ -22,19 +24,8 @@ function getScenarios(callback) {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
         const cols = row.split(",");
-        const [id, title, prompt_text, category, instructions, emotion, voiceGender, languageCode, pitch, speakingRate] = cols.map(x => x.trim());
-        return {
-          id,
-          title,
-          prompt_text,
-          category,
-          instructions,
-          emotion,
-          voiceGender: voiceGender || "FEMALE",
-          languageCode: languageCode || "en-GB",
-          pitch: parseFloat(pitch) || 0.0,
-          speakingRate: parseFloat(speakingRate) || 1.0
-        };
+        const [id, title, prompt_text, category, instructions, emotion] = cols.map(x => x.trim());
+        return { id, title, prompt_text, category, instructions, emotion };
       }).filter(s => s.title && s.id);
       callback(scenarios);
     });
@@ -66,15 +57,13 @@ function showReply(replyText, isError) {
 
   const visible = isError
     ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
-    : "🧑‍⚕️ Patient: " + replyText
-        .replace(/\s+/g, ' ')
-        .trim();
+    : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
 
   const voiceCleaned = replyText
     .replace(/\[(.*?)\]/g, '')
     .replace(/\(.*?\)/g, '')
     .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
-    .replace(/🧑‍⚕️|🧑‍⚖️|👩‍⚕️|🧑‍🦰|👨‍⚕️|👨‍🦰|👩‍🦰/g, '')
+    .replace(/[🧑‍⚕️🧑‍⚖️👩‍⚕️🧑‍🦰👨‍⚕️👨‍🦰👩‍🦰]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -84,6 +73,18 @@ function showReply(replyText, isError) {
   if (!isError && replyText) {
     queueAndSpeakReply(voiceCleaned);
   }
+}
+
+function getVoiceSettings(emotion) {
+  const emotionMap = {
+    sad: { pitch: -2.0, speakingRate: 0.85 },
+    angry: { pitch: 2.0, speakingRate: 1.2 },
+    cheerful: { pitch: 3.0, speakingRate: 1.15 },
+    worried: { pitch: 0.0, speakingRate: 0.95 },
+    calm: { pitch: -1.0, speakingRate: 0.90 },
+    neutral: { pitch: 0.0, speakingRate: 1.0 },
+  };
+  return emotionMap[emotion?.toLowerCase()] || emotionMap.neutral;
 }
 
 function queueAndSpeakReply(text) {
@@ -98,18 +99,12 @@ function playNextInQueue() {
   }
   const text = audioQueue.shift();
   isSpeaking = true;
+  const settings = getVoiceSettings(currentScenario?.emotion);
 
   fetch('/.netlify/functions/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      emotion: currentScenario?.emotion || "neutral",
-      pitch: currentScenario?.pitch ?? 0.0,
-      speakingRate: currentScenario?.speakingRate ?? 1.0,
-      voiceGender: currentScenario?.voiceGender ?? "FEMALE",
-      languageCode: currentScenario?.languageCode ?? "en-GB"
-    }),
+    body: JSON.stringify({ text, ...settings }),
   })
     .then(res => res.json())
     .then(data => {
