@@ -21,18 +21,18 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const cols = row.split(',');
+        const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
-          id: cols[0]?.trim() || '',
-          title: cols[1]?.trim() || '',
-          prompt_text: cols[2]?.trim() || '',
-          category: cols[3]?.trim() || '',
-          instructions: cols[4]?.trim() || '',
-          emotion: cols[5]?.trim() || '',
-          script: cols[6]?.trim() || '',
-          gender: cols[7]?.trim() || 'FEMALE',
-          languageCode: cols[8]?.trim() || 'en-GB',
-          styleTag: cols[9]?.trim() || 'neutral',
+          id: cols[0] || '',
+          title: cols[1] || '',
+          prompt_text: cols[2] || '',
+          category: cols[3] || '',
+          instructions: cols[4] || '',
+          emotion: cols[5] || '',
+          script: cols[6] || '',
+          gender: cols[7] || 'FEMALE',
+          languageCode: cols[8] || 'en-GB',
+          styleTag: cols[9] || 'neutral',
           speakingRate: parseFloat(cols[10]) || 1,
           pitch: parseFloat(cols[11]) || 0
         };
@@ -95,13 +95,17 @@ function playNextInQueue() {
     isSpeaking = false;
     return;
   }
+
   const text = audioQueue.shift();
   isSpeaking = true;
+
+  const gender = (currentScenario?.gender || '').toUpperCase();
+  const validatedGender = ['MALE', 'FEMALE'].includes(gender) ? gender : 'FEMALE';
 
   const payload = {
     text,
     languageCode: currentScenario?.languageCode || 'en-GB',
-    gender: currentScenario?.gender?.toUpperCase() || 'FEMALE',
+    gender: validatedGender,
     style: currentScenario?.styleTag || 'neutral',
     pitch: parseFloat(currentScenario?.pitch || 0),
     speakingRate: parseFloat(currentScenario?.speakingRate || 1)
