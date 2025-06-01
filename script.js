@@ -1,5 +1,3 @@
-// ✅ OSCE Simulation App — Stable, Dual-Speaker, Auto Load, WaveNet Compatible
-
 let isWaitingForReply = false;
 let currentScenario = null;
 let allScenarios = [];
@@ -10,21 +8,19 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-// ✅ Working CSV link
+// ✅ Correct CSV link
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
   "MOTHER": {
     gender: "FEMALE",
     languageCode: "en-GB",
-    name: "en-GB-Wavenet-F",
     pitch: -2,
     speakingRate: 0.95
   },
   "CHILD": {
     gender: "FEMALE",
     languageCode: "en-GB",
-    name: "en-GB-Wavenet-C",
     pitch: 4,
     speakingRate: 1.15
   }
@@ -117,6 +113,7 @@ function playNextInQueue() {
   }
   const { text, speaker } = audioQueue.shift();
   isSpeaking = true;
+
   const voiceConfig = speakerVoices[speaker] || {
     gender: currentScenario?.gender || 'FEMALE',
     languageCode: currentScenario?.languageCode || 'en-GB',
@@ -161,7 +158,7 @@ function startTimer(duration) {
   }, 1000);
 }
 
-// 🎲 Button events
+// 🎲 Button Events
 document.getElementById("start-random-btn").addEventListener("click", () => {
   if (allScenarios.length === 0) return;
   const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
