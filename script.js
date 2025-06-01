@@ -153,12 +153,13 @@ function playNextInQueue() {
 }
 
 function showReply(replyText, isError = false) {
-  const el = document.createElement('p');
-  el.style.marginTop = "10px";
-  el.style.padding = "8px";
-  el.style.borderRadius = "6px";
-  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-  const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that." : "🧑‍⚕️ Patient: " + replyText.trim();
+  const voiceCleaned = replyText
+  .replace(/\[(.*?)\]/g, '') // remove stage directions
+  .replace(/\(.*?\)/g, '')   // remove notes
+  .replace(/^(\s*)(yeah|okay|well|alright|um+|mm+|ah+|eh+|uh+)[.,\s]*/i, '') // remove starting filler
+  .replace(/🧑‍⚕️|👩‍⚕️|👨‍⚕️/g, '') // remove emojis
+  .replace(/\s+/g, ' ') // normalize spacing
+  .trim();
   el.innerHTML = visible;
   document.getElementById('chat-container').appendChild(el);
   if (!isError && replyText) queueAndSpeakReply(replyText, "CHILD");
