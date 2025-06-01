@@ -22,8 +22,19 @@ function getScenarios(callback) {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
         const cols = row.split(",");
-        const [id, title, prompt_text, category, instructions, emotion] = cols.map(x => x.trim());
-        return { id, title, prompt_text, category, instructions, emotion };
+        const [id, title, prompt_text, category, instructions, emotion, voiceGender, languageCode, pitch, speakingRate] = cols.map(x => x.trim());
+        return {
+          id,
+          title,
+          prompt_text,
+          category,
+          instructions,
+          emotion,
+          voiceGender: voiceGender || "FEMALE",
+          languageCode: languageCode || "en-GB",
+          pitch: parseFloat(pitch) || 0.0,
+          speakingRate: parseFloat(speakingRate) || 1.0
+        };
       }).filter(s => s.title && s.id);
       callback(scenarios);
     });
@@ -60,10 +71,10 @@ function showReply(replyText, isError) {
         .trim();
 
   const voiceCleaned = replyText
-    .replace(/\[(.*?)\]/g, '')  // remove stage directions
-    .replace(/\(.*?\)/g, '')    // remove (notes)
-    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')  // remove filler words
-    .replace(/🧑‍⚕️|🧑‍⚖️|👩‍⚕️|🧑‍🦰|👨‍⚕️|👨‍🦰|👩‍🦰/g, '') // remove emojis
+    .replace(/\[(.*?)\]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
+    .replace(/🧑‍⚕️|🧑‍⚖️|👩‍⚕️|🧑‍🦰|👨‍⚕️|👨‍🦰|👩‍🦰/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -91,9 +102,13 @@ function playNextInQueue() {
   fetch('/.netlify/functions/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
+    body: JSON.stringify({
       text,
-      emotion: currentScenario?.emotion || "neutral" 
+      emotion: currentScenario?.emotion || "neutral",
+      pitch: currentScenario?.pitch ?? 0.0,
+      speakingRate: currentScenario?.speakingRate ?? 1.0,
+      voiceGender: currentScenario?.voiceGender ?? "FEMALE",
+      languageCode: currentScenario?.languageCode ?? "en-GB"
     }),
   })
     .then(res => res.json())
@@ -117,7 +132,6 @@ function playNextInQueue() {
     });
 }
 
-// Step 1: Load Scenario (Only)
 document.getElementById("start-random-btn").addEventListener("click", () => {
   getScenarios((scenarios) => {
     const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
@@ -130,7 +144,6 @@ document.getElementById("start-random-btn").addEventListener("click", () => {
   });
 });
 
-// Step 2: Start Station (timer + voice)
 document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   startTimer(300);
