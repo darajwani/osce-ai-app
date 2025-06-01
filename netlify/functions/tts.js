@@ -1,4 +1,4 @@
-// Updated tts.js with corrected pitch formatting
+// Updated tts.js with logging for debugging pitch, rate, and SSML
 const textToSpeech = require('@google-cloud/text-to-speech');
 
 exports.handler = async function (event) {
@@ -41,9 +41,15 @@ exports.handler = async function (event) {
       };
     }
 
+    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${text}</prosody></speak>`;
+
+    // Log input for debugging
+    console.log("TTS request body:", body);
+    console.log("Generated SSML:", ssmlText);
+
     const [response] = await client.synthesizeSpeech({
       input: {
-        ssml: `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${text}</prosody></speak>`,
+        ssml: ssmlText,
       },
       voice: {
         languageCode,
