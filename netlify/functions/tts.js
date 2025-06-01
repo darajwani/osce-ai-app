@@ -1,4 +1,4 @@
-// Updated tts.js with dynamic voice parameters from front-end
+// Updated tts.js with corrected pitch formatting
 const textToSpeech = require('@google-cloud/text-to-speech');
 
 exports.handler = async function (event) {
@@ -29,7 +29,6 @@ exports.handler = async function (event) {
       text,
       languageCode = 'en-GB',
       gender = 'FEMALE',
-      style = 'neutral',
       pitch = 0,
       speakingRate = 1,
     } = body;
@@ -43,7 +42,9 @@ exports.handler = async function (event) {
     }
 
     const [response] = await client.synthesizeSpeech({
-      input: { ssml: `<speak><prosody pitch="${pitch}" rate="${speakingRate}">${text}</prosody></speak>` },
+      input: {
+        ssml: `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${text}</prosody></speak>`,
+      },
       voice: {
         languageCode,
         ssmlGender: gender,
