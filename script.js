@@ -1,4 +1,4 @@
-// ✅ Final version with distinct voices and dual-speaker logic improvements
+// ✅ Stable version with dual-speaker support and safe scenario loading
 
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -10,22 +10,22 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcCIw-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
   "MOTHER": {
-    voiceName: "en-GB-Wavenet-F",
+    gender: "FEMALE",
     languageCode: "en-GB",
-    ssmlGender: "FEMALE",
+    name: "en-GB-Wavenet-F",
     pitch: -2,
-    speakingRate: 0.5
+    speakingRate: 0.9
   },
   "CHILD": {
-    voiceName: "en-GB-Wavenet-C",
+    gender: "FEMALE",
     languageCode: "en-GB",
-    ssmlGender: "FEMALE",
+    name: "en-GB-Wavenet-C",
     pitch: 4,
-    speakingRate: 1.5
+    speakingRate: 1.2
   }
 };
 
@@ -41,7 +41,7 @@ function getScenarios(callback) {
     .then(csv => {
       const rows = csv.split("\n").slice(1);
       const scenarios = rows.map(row => {
-        const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
+        const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
           id: cols[0] || '',
           title: cols[1] || '',
@@ -56,7 +56,7 @@ function getScenarios(callback) {
           speakingRate: parseFloat(cols[10]) || 1,
           pitch: parseFloat(cols[11]) || 0
         };
-      }).filter(s => s.title && s.id);
+      }).filter(s => s.id && s.title);
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
       if (callback) callback(scenarios);
@@ -75,12 +75,14 @@ function populateScenarioDropdown(scenarios) {
 }
 
 function parseMultiActorScript(script) {
-  const lines = script.split(/\n|\\n/).map(l => l.trim()).filter(Boolean);
   const sequence = [];
-  for (const line of lines) {
-    if (line.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
-    const match = line.match(/^\[(.*?)\]\s*(.*)$/);
-    if (match) sequence.push({ speaker: match[1].toUpperCase(), text: match[2] });
+  const matches = script.matchAll(/\[(.*?)\]\s*(.*?)(?=\s*\[|$)/gs);
+  for (const match of matches) {
+    const speaker = match[1]?.toUpperCase().trim();
+    const text = match[2]?.trim();
+    if (speaker && text && !speaker.includes("DOCTOR")) {
+      sequence.push({ speaker, text });
+    }
   }
   return sequence;
 }
@@ -121,14 +123,7 @@ function playNextInQueue() {
   fetch('/.netlify/functions/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      languageCode: config.languageCode,
-      gender: config.ssmlGender,
-      pitch: config.pitch,
-      speakingRate: config.speakingRate,
-      voiceName: config.voiceName
-    })
+    body: JSON.stringify({ text, ...config })
   })
     .then(res => res.json())
     .then(data => {
@@ -140,9 +135,41 @@ function playNextInQueue() {
     .catch(err => { console.warn("TTS error", err); isSpeaking = false; playNextInQueue(); });
 }
 
-// Other functions stay the same...
-// If you need those too, let me know and I’ll send them separately to avoid redundancy.
+document.getElementById("start-random-btn").addEventListener("click", () => {
+  if (allScenarios.length === 0) return;
+  const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
+  loadScenario(randomScenario);
+});
 
-window.addEventListener('DOMContentLoaded', () => {
-  getScenarios();
+document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
+  const selectedId = e.target.value;
+  const selectedScenario = allScenarios.find(s => s.id === selectedId);
+  if (selectedScenario) loadScenario(selectedScenario);
+});
+
+function loadScenario(scenario) {
+  currentScenario = scenario;
+  isRecording = false;
+  showMicRecording(false);
+  document.getElementById("scenario-title").textContent = scenario.title;
+  document.getElementById("scenario-text").textContent = scenario.prompt_text;
+  document.getElementById("scenario-box").style.display = "block";
+  document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
+  document.getElementById("start-station-btn").style.display = "inline-block";
+  document.getElementById("stop-station-btn").style.display = "none";
+}
+
+document.getElementById("start-station-btn").addEventListener("click", () => {
+  document.getElementById("start-station-btn").style.display = "none";
+  document.getElementById("stop-station-btn").style.display = "inline-block";
+  document.getElementById("chat-container").style.display = "block";
+  startTimer(300);
+  sessionEndTime = Date.now() + 5 * 60 * 1000;
+  isRecording = true;
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
+  if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
+});
+
+document.getElementById("stop-station-btn").addEventListener("click", () => {
+  location.reload();
 });
