@@ -44,7 +44,7 @@ exports.handler = async function (event) {
 
     const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${text}</prosody></speak>`;
 
-    console.log("TTS request:", { text, voiceName, languageCode, gender, pitch, speakingRate });
+    console.log("TTS request config:", { text, voiceName, languageCode, gender, pitch, speakingRate });
     console.log("Generated SSML:", ssmlText);
 
     const [response] = await client.synthesizeSpeech({
@@ -52,7 +52,10 @@ exports.handler = async function (event) {
       voice: voiceName
         ? { name: voiceName, languageCode }
         : { languageCode, ssmlGender: gender },
-      audioConfig: { audioEncoding: 'MP3' },
+      audioConfig: {
+        audioEncoding: 'MP3',
+        effectsProfileId: ['small-bluetooth-speaker-class-device'],
+      },
     });
 
     const base64Audio = Buffer.from(response.audioContent).toString('base64');
