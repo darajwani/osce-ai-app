@@ -118,6 +118,23 @@ document.getElementById("stop-station-btn").addEventListener("click", () => {
   location.reload();
 });
 
+function startTimer(duration) {
+  let timer = duration;
+  const timerDisplay = document.getElementById("timer");
+  const interval = setInterval(() => {
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    if (--timer < 0) {
+      clearInterval(interval);
+      alert("OSCE session complete!");
+      isRecording = false;
+      showMicRecording(false);
+      if (lastMediaStream) lastMediaStream.getTracks().forEach(t => t.stop());
+    }
+  }, 1000);
+}
+
 async function playDialogueScript(dialogue) {
   for (const line of dialogue) {
     const voice = voices[line.Speaker] || voices.Parent;
