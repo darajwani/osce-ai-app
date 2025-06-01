@@ -7,51 +7,96 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 40px 20px;
       text-align: center;
     }
-    select, button {
-      margin: 6px;
-      padding: 10px 16px;
-      font-size: 16px;
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
     }
+
+    p small {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    select, button {
+      margin: 8px;
+      padding: 10px 18px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: white;
+      cursor: pointer;
+    }
+
+    button:hover, select:hover {
+      background-color: #f0f0f0;
+    }
+
+    button:disabled {
+      background-color: #eee;
+      cursor: not-allowed;
+    }
+
     #mic-icon {
       margin: 30px auto 20px;
-      width: 44px; height: 44px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: #eee url('https://img.icons8.com/ios-filled/50/000000/microphone.png') center/26px no-repeat;
+      background: #eee url('https://img.icons8.com/ios-filled/50/000000/microphone.png') center/28px no-repeat;
       box-shadow: 0 0 12px #ccc;
       transition: box-shadow 0.2s, background 0.2s;
-      cursor: default;
     }
+
     #mic-icon.mic-recording {
       background-color: #ffeaea;
       box-shadow: 0 0 0 8px #ff5252aa, 0 0 20px #ff5252;
       animation: pulse 1s infinite;
     }
+
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
-      50% { box-shadow: 0 0 0 16px #ff525222, 0 0 32px #ff5252; }
+      0%   { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
+      50%  { box-shadow: 0 0 0 16px #ff525222, 0 0 32px #ff5252; }
       100% { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
     }
+
     #scenario-box {
       display: none;
       margin-top: 30px;
       text-align: left;
-      max-width: 600px;
+      max-width: 700px;
       margin-left: auto;
       margin-right: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
+
+    #scenario-title {
+      font-size: 1.4rem;
+      margin-bottom: 10px;
+    }
+
     #chat-container {
       display: none;
       margin-top: 20px;
-      padding: 12px;
-      border: 1px solid #ccc;
+      padding: 14px;
+      border: 1px solid #ddd;
       border-radius: 8px;
-      max-height: 260px;
+      max-height: 280px;
       overflow-y: auto;
-      background: #fafafa;
+      background: #fcfcfc;
+      font-size: 0.95rem;
+    }
+
+    #controls {
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -63,32 +108,31 @@
     <small><b>Tip:</b> Speak after each AI response. Session lasts 5 minutes.</small>
   </p>
 
-  <div>
+  <div id="controls">
     <button id="start-random-btn">🎲 Random Scenario</button>
     <select id="scenario-dropdown">
       <option value="">-- Select a scenario --</option>
     </select>
   </div>
 
-  <div>
-    <button id="start-station-btn" style="display:none;">▶️ Start Station</button>
-    <button id="stop-station-btn" style="display:none;">⏹️ Stop</button>
-  </div>
-
-  <div id="mic-icon" class="mic-idle" title="Microphone"></div>
-
   <div id="scenario-box">
     <h2 id="scenario-title"></h2>
     <p id="scenario-text"></p>
     <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
     <div id="chat-container"><b>AI Patient Replies:</b><br></div>
+    <div style="margin-top: 20px;">
+      <button id="start-station-btn" style="display:none;">▶️ Start Station</button>
+      <button id="stop-station-btn" style="display:none;">⏹️ Stop</button>
+    </div>
   </div>
+
+  <div id="mic-icon" class="mic-idle" title="Microphone"></div>
 
   <!-- ONNX Runtime -->
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
   <!-- VAD -->
   <script src="./vad/bundle.min.js"></script>
-  <!-- App Logic -->
+  <!-- Main App Logic -->
   <script src="script.js"></script>
 </body>
 </html>
