@@ -188,6 +188,33 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   startTimer(300);
   sessionEndTime = Date.now() + 5 * 60 * 1000;
   isRecording = true;
+  function showReply(replyText, isError = false) {
+  const el = document.createElement('p');
+  el.style.marginTop = "10px";
+  el.style.padding = "8px";
+  el.style.borderRadius = "6px";
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+
+  const visible = isError
+    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
+    : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+
+  const voiceCleaned = replyText
+    .replace(/\[(.*?)\]/g, '') // remove [stage directions]
+    .replace(/\(.*?\)/g, '')   // remove (notes)
+    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '') // remove filler words
+    .replace(/🧑‍⚕️|👩‍⚕️|👨‍⚕️/g, '') // remove emojis
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  el.innerHTML = visible;
+  document.getElementById('chat-container').appendChild(el);
+
+  if (!isError && replyText) {
+    queueAndSpeakReply(voiceCleaned);
+  }
+}
+
   startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
   if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
 });
