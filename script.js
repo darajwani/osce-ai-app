@@ -12,18 +12,8 @@ window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
-  "MOTHER": {
-    gender: "FEMALE",
-    languageCode: "en-GB",
-    pitch: -2,
-    speakingRate: 0.95
-  },
-  "CHILD": {
-    gender: "FEMALE",
-    languageCode: "en-GB",
-    pitch: 4,
-    speakingRate: 1.15
-  }
+  "MOTHER": { gender: "FEMALE", languageCode: "en-GB", pitch: -2, speakingRate: 0.95 },
+  "CHILD": { gender: "FEMALE", languageCode: "en-GB", pitch: 4, speakingRate: 1.15 }
 };
 
 function showMicRecording(isRec) {
@@ -40,28 +30,18 @@ function getScenarios(callback) {
       const scenarios = rows.map(row => {
         const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
-          id: cols[0] || '',
-          title: cols[1] || '',
-          prompt_text: cols[2] || '',
-          category: cols[3] || '',
-          instructions: cols[4] || '',
-          emotion: cols[5] || '',
-          script: cols[6] || '',
-          gender: cols[7] || 'FEMALE',
-          languageCode: cols[8] || 'en-GB',
-          styleTag: cols[9] || 'neutral',
-          speakingRate: parseFloat(cols[10]) || 1,
-          pitch: parseFloat(cols[11]) || 0,
-          name: cols[12] || ''
+          id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
+          category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
+          script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
+          styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
+          pitch: parseFloat(cols[11]) || 0, name: cols[12] || ''
         };
       }).filter(s => s.id && s.title);
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
       if (callback) callback(scenarios);
     })
-    .catch(err => {
-      console.error("Failed to fetch scenarios:", err);
-    });
+    .catch(err => console.error("Failed to fetch scenarios:", err));
 }
 
 function populateScenarioDropdown(scenarios) {
@@ -110,33 +90,20 @@ function queueAndSpeakReply(text, speakerOverride = null) {
 }
 
 function playNextInQueue() {
-  if (audioQueue.length === 0) {
-    isSpeaking = false;
-    return;
-  }
-
+  if (audioQueue.length === 0) return void (isSpeaking = false);
   const { text, speaker } = audioQueue.shift();
   isSpeaking = true;
 
   let voiceConfig = speakerVoices[speaker];
-
   if (!voiceConfig) {
-    const matchByName = allScenarios.find(s => s.name && s.name.toUpperCase().includes(speaker.toUpperCase()));
-    if (matchByName) {
-      voiceConfig = {
-        gender: matchByName.gender || 'FEMALE',
-        languageCode: matchByName.languageCode || 'en-GB',
-        pitch: parseFloat(matchByName.pitch || 0),
-        speakingRate: parseFloat(matchByName.speakingRate || 1)
-      };
-    } else {
-      voiceConfig = {
-        gender: currentScenario?.gender || 'FEMALE',
-        languageCode: currentScenario?.languageCode || 'en-GB',
-        pitch: parseFloat(currentScenario?.pitch || 0),
-        speakingRate: parseFloat(currentScenario?.speakingRate || 1)
-      };
-    }
+    const matchByName = allScenarios.find(s => s.name?.toUpperCase() === speaker?.toUpperCase());
+    voiceConfig = matchByName ? {
+      gender: matchByName.gender, languageCode: matchByName.languageCode,
+      pitch: parseFloat(matchByName.pitch || 0), speakingRate: parseFloat(matchByName.speakingRate || 1)
+    } : {
+      gender: currentScenario?.gender || 'FEMALE', languageCode: currentScenario?.languageCode || 'en-GB',
+      pitch: parseFloat(currentScenario?.pitch || 0), speakingRate: parseFloat(currentScenario?.speakingRate || 1)
+    };
   }
 
   fetch('/.netlify/functions/tts', {
@@ -196,8 +163,12 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
     el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-    const voiceCleaned = replyText.replace(/\[(.*?)\]/g, '').replace(/\(.*?\)/g, '').replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '').replace(/🧑‍⚕️|👩‍⚕️|👨‍⚕️/g, '').replace(/\s+/g, ' ').trim();
+    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
+      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+    const voiceCleaned = replyText
+      .replace(/\[(.*?)\]/g, '').replace(/\(.*?\)/g, '')
+      .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
+      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '').replace(/\s+/g, ' ').trim();
     el.innerHTML = visible;
     document.getElementById('chat-container').appendChild(el);
     if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
@@ -207,9 +178,7 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
 });
 
-document.getElementById("stop-station-btn").addEventListener("click", () => {
-  location.reload();
-});
+document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
 
 function startTimer(duration) {
   let timer = duration;
@@ -295,3 +264,6 @@ function sendToMake(blob, url, onReply) {
       isWaitingForReply = false;
     });
 }
+
+// Auto-load scenarios
+window.addEventListener("DOMContentLoaded", () => getScenarios());
