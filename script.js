@@ -13,8 +13,8 @@ window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
-  "MOTHER": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: -2, speakingRate: 0.95 },
-  "CHILD": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: 4, speakingRate: 1.15 }
+  "MOTHER": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: -4, speakingRate: 0.5 },
+  "CHILD": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: 4, speakingRate: 2 }
 };
 
 function showMicRecording(isRec) {
