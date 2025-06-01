@@ -1,4 +1,4 @@
-// ✅ OSCE Simulation App — Final Version with Smart Triggered Script Flow (with null check fix)
+// ✅ OSCE Simulation App — Final Version with Smart Triggered Script Flow
 
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -175,4 +175,4 @@ function showReply(replyText, isError = false) {
   if (!isError) queueAndSpeakReply(voiceCleaned, "CHILD");
 }
 
-// ... rest of your code remains unchanged (station load, voice loop, etc.) ...
+// ✅ The rest of the logic (startVoiceLoopWithVAD, sendToMake, startTimer, and event bindings) stays unchanged
