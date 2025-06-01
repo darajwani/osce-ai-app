@@ -262,3 +262,10 @@ function sendToMake(blob, url, onReply) {
       isWaitingForReply = false;
     });
 }
+// Populate dropdown when the page loads
+window.addEventListener('DOMContentLoaded', () => {
+  getScenarios((scenarios) => {
+    allScenarios = scenarios;
+    populateScenarioDropdown(scenarios);
+  });
+});
