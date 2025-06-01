@@ -1,3 +1,5 @@
+// tts.js — Netlify Function for Google TTS
+
 const textToSpeech = require('@google-cloud/text-to-speech');
 
 exports.handler = async function (event) {
@@ -27,35 +29,34 @@ exports.handler = async function (event) {
     const body = JSON.parse(event.body);
     const {
       text,
-      voiceName,
-      languageCode = 'en-GB',
+      name,          // optional full voice name like en-GB-Wavenet-F
       gender = 'FEMALE',
+      languageCode = 'en-GB',
       pitch = 0,
       speakingRate = 1,
     } = body;
 
-    if (!text) {
+    if (!text || text.trim().length === 0) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing `text` in request body.' }),
+        body: JSON.stringify({ error: 'Missing or empty `text` in request.' }),
       };
     }
 
     const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${text}</prosody></speak>`;
 
-    console.log("TTS request config:", { text, voiceName, languageCode, gender, pitch, speakingRate });
-    console.log("Generated SSML:", ssmlText);
+    const voice = name
+      ? { name, languageCode }
+      : { languageCode, ssmlGender: gender };
 
     const [response] = await client.synthesizeSpeech({
       input: { ssml: ssmlText },
-      voice: voiceName
-        ? { name: voiceName, languageCode }
-        : { languageCode, ssmlGender: gender },
+      voice,
       audioConfig: {
         audioEncoding: 'MP3',
         effectsProfileId: ['small-bluetooth-speaker-class-device'],
-      },
+      }
     });
 
     const base64Audio = Buffer.from(response.audioContent).toString('base64');
@@ -66,7 +67,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({ audioContent: base64Audio }),
     };
   } catch (error) {
-    console.error("TTS Error:", error);
+    console.error("TTS error:", error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
