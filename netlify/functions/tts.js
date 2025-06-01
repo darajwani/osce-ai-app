@@ -1,3 +1,4 @@
+// Updated tts.js with dynamic voice parameters from front-end
 const textToSpeech = require('@google-cloud/text-to-speech');
 
 exports.handler = async function (event) {
@@ -23,13 +24,15 @@ exports.handler = async function (event) {
   const client = new textToSpeech.TextToSpeechClient({ credentials });
 
   try {
+    const body = JSON.parse(event.body);
     const {
       text,
       languageCode = 'en-GB',
       gender = 'FEMALE',
-      speakingRate,
-      pitch,
-    } = JSON.parse(event.body);
+      style = 'neutral',
+      pitch = 0,
+      speakingRate = 1,
+    } = body;
 
     if (!text) {
       return {
@@ -39,28 +42,10 @@ exports.handler = async function (event) {
       };
     }
 
-    // Voice name defaults (can be customized if you want)
-    const defaultVoices = {
-      'en-GB': { MALE: 'en-GB-Standard-A', FEMALE: 'en-GB-Standard-C' },
-      'en-IN': { MALE: 'en-IN-Standard-B', FEMALE: 'en-IN-Standard-A' },
-      'en-US': { MALE: 'en-US-Standard-B', FEMALE: 'en-US-Standard-C' },
-    };
-
-    const voiceName =
-      (defaultVoices[languageCode]?.[gender?.toUpperCase()]) || 'en-GB-Standard-C';
-
-    const prosodyParts = [];
-    if (speakingRate) prosodyParts.push(`rate="${speakingRate}"`);
-    if (pitch) prosodyParts.push(`pitch="${pitch}st"`);
-
-    const prosodyAttr = prosodyParts.join(' ');
-    const ssml = `<speak><prosody ${prosodyAttr}>${text}</prosody></speak>`;
-
     const [response] = await client.synthesizeSpeech({
-      input: { ssml },
+      input: { ssml: `<speak><prosody pitch="${pitch}" rate="${speakingRate}">${text}</prosody></speak>` },
       voice: {
         languageCode,
-        name: voiceName,
         ssmlGender: gender,
       },
       audioConfig: {
@@ -69,6 +54,7 @@ exports.handler = async function (event) {
     });
 
     const base64Audio = Buffer.from(response.audioContent).toString('base64');
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
