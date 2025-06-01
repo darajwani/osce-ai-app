@@ -1,4 +1,4 @@
-// ✅ Final version with dual-speaker support and correct script parsing
+// ✅ Final version with dual-speaker support, fixed script parsing, and voice differentiation
 
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -13,8 +13,8 @@ window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
-  "MOTHER": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: 0, speakingRate: 1 },
-  "CHILD": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: 2, speakingRate: 1.1 }
+  "MOTHER": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: -2, speakingRate: 0.95 },
+  "CHILD": { gender: "FEMALE", languageCode: "en-GB", style: "default", pitch: 4, speakingRate: 1.15 }
 };
 
 function showMicRecording(isRec) {
@@ -63,12 +63,12 @@ function populateScenarioDropdown(scenarios) {
 }
 
 function parseMultiActorScript(script) {
-  const parts = script.split(/(?=\[(MOTHER|CHILD)\])/gi).map(s => s.trim()).filter(Boolean);
+  const lines = script.split(/\n+/).map(l => l.trim()).filter(Boolean);
   const sequence = [];
-  for (const part of parts) {
-    const match = part.match(/^\[(.*?)\]\s*(.*)/s);
+  for (const line of lines) {
+    if (line.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
+    const match = line.match(/^\[(.*?)\]\s*(.*)$/);
     if (match) sequence.push({ speaker: match[1].toUpperCase(), text: match[2] });
-    if (part.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
   }
   return sequence;
 }
