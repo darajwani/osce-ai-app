@@ -1,4 +1,5 @@
-// Top-level state
+// ✅ OSCE Simulation App — Final Version with Smart Triggered Script Flow
+
 let isWaitingForReply = false;
 let currentScenario = null;
 let allScenarios = [];
@@ -8,6 +9,8 @@ let lastMediaStream = null;
 let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+window.__scriptFullyPlayed = false;
+window.allowOnlyChildAfterScript = false;
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
@@ -16,13 +19,15 @@ const speakerVoices = {
     gender: "FEMALE",
     languageCode: "en-GB",
     pitch: -2,
-    speakingRate: 0.95
+    speakingRate: 0.92,
+    name: "en-GB-Standard-A"
   },
   "CHILD": {
     gender: "FEMALE",
-    languageCode: "en-GB",
+    languageCode: "en-US",
     pitch: 4,
-    speakingRate: 1.15
+    speakingRate: 1.2,
+    name: "en-US-Standard-C"
   }
 };
 
@@ -89,7 +94,7 @@ function parseMultiActorScript(script) {
 
 function showReplyFromScript(script) {
   const sequence = parseMultiActorScript(script);
-  for (const part of sequence) {
+  sequence.forEach(part => {
     const el = document.createElement('p');
     el.style.marginTop = "10px";
     el.style.padding = "8px";
@@ -98,10 +103,13 @@ function showReplyFromScript(script) {
     el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
     document.getElementById('chat-container').appendChild(el);
     queueAndSpeakReply(part.text, part.speaker);
-  }
+  });
+  window.__scriptFullyPlayed = true;
+  window.allowOnlyChildAfterScript = true;
 }
 
 function queueAndSpeakReply(text, speakerOverride = null) {
+  if (window.allowOnlyChildAfterScript && speakerOverride === "MOTHER") return;
   audioQueue.push({ text, speaker: speakerOverride });
   if (!isSpeaking) playNextInQueue();
 }
@@ -120,6 +128,9 @@ function playNextInQueue() {
     pitch: parseFloat(currentScenario?.pitch || 0),
     speakingRate: parseFloat(currentScenario?.speakingRate || 1)
   };
+  if (speakerVoices[speaker]?.name) {
+    voiceConfig.name = speakerVoices[speaker].name;
+  }
 
   fetch('/.netlify/functions/tts', {
     method: 'POST',
@@ -130,6 +141,7 @@ function playNextInQueue() {
     .then(data => {
       if (!data.audioContent) throw new Error("No audio content returned");
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      window.activeScriptedAudio = audio;
       audio.play().catch(console.warn);
       audio.onended = () => { isSpeaking = false; playNextInQueue(); };
     })
@@ -137,6 +149,87 @@ function playNextInQueue() {
       console.warn("TTS error:", err);
       isSpeaking = false;
       playNextInQueue();
+    });
+}
+
+function showReply(replyText, isError = false) {
+  const el = document.createElement('p');
+  el.style.marginTop = "10px";
+  el.style.padding = "8px";
+  el.style.borderRadius = "6px";
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+  const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that." : "🧑‍⚕️ Patient: " + replyText.trim();
+  el.innerHTML = visible;
+  document.getElementById('chat-container').appendChild(el);
+  if (!isError && replyText) queueAndSpeakReply(replyText, "CHILD");
+}
+
+async function startVoiceLoopWithVAD(webhook, onReply) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  lastMediaStream = stream;
+  let recorder = null;
+  let chunks = [];
+
+  const vadControl = await vad.MicVAD.new({
+    onSpeechStart: () => {
+      showMicRecording(true);
+      if (!window.__scriptFullyPlayed && currentScenario?.script?.includes("[")) {
+        showReplyFromScript(currentScenario.script);
+        return;
+      }
+      chunks = [];
+      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        sendToMake(blob, webhook, (reply, error) => {
+          if (reply) onReply(reply);
+          else onReply(null, true);
+        });
+      };
+      recorder.start();
+    },
+    onSpeechEnd: () => {
+      showMicRecording(false);
+      if (recorder?.state === 'recording') recorder.stop();
+    },
+    modelURL: "./vad/silero_vad.onnx"
+  });
+
+  vadControl.start();
+
+  setTimeout(() => {
+    isRecording = false;
+    vadControl.destroy();
+    stream.getTracks().forEach(track => track.stop());
+    showMicRecording(false);
+  }, 5 * 60 * 1000);
+}
+
+function sendToMake(blob, url, onReply) {
+  if (isWaitingForReply) return;
+  isWaitingForReply = true;
+  const formData = new FormData();
+  formData.append('file', blob, 'audio.webm');
+  if (currentScenario?.id) formData.append('id', currentScenario.id);
+  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
+  fetch(url, { method: 'POST', body: formData })
+    .then(async res => {
+      const raw = await res.text();
+      try {
+        const json = JSON.parse(raw);
+        const decoded = atob(json.reply);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+        onReply(cleanedReply);
+      } catch (e) {
+        onReply(null, true);
+      }
+      isWaitingForReply = false;
+    })
+    .catch(err => {
+      onReply(null, true);
+      isWaitingForReply = false;
     });
 }
 
@@ -173,6 +266,8 @@ function loadScenario(scenario) {
   currentScenario = scenario;
   isRecording = false;
   showMicRecording(false);
+  window.__scriptFullyPlayed = false;
+  window.allowOnlyChildAfterScript = false;
   document.getElementById("scenario-title").textContent = scenario.title;
   document.getElementById("scenario-text").textContent = scenario.prompt_text;
   document.getElementById("scenario-box").style.display = "block";
@@ -188,112 +283,13 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   startTimer(300);
   sessionEndTime = Date.now() + 5 * 60 * 1000;
   isRecording = true;
-  function showReply(replyText, isError = false) {
-  const el = document.createElement('p');
-  el.style.marginTop = "10px";
-  el.style.padding = "8px";
-  el.style.borderRadius = "6px";
-  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-
-  const visible = isError
-    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
-    : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-
-  const voiceCleaned = replyText
-    .replace(/\[(.*?)\]/g, '') // remove [stage directions]
-    .replace(/\(.*?\)/g, '')   // remove (notes)
-    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '') // remove filler words
-    .replace(/🧑‍⚕️|👩‍⚕️|👨‍⚕️/g, '') // remove emojis
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  el.innerHTML = visible;
-  document.getElementById('chat-container').appendChild(el);
-
-  if (!isError && replyText) {
-    queueAndSpeakReply(voiceCleaned);
-  }
-}
-
   startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
-  if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => {
   location.reload();
 });
 
-async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  lastMediaStream = stream;
-
-  let recorder = null;
-  let chunks = [];
-
-  const myvad = await vad.MicVAD.new({
-    onSpeechStart: () => {
-      showMicRecording(true);
-      chunks = [];
-      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        sendToMake(blob, makeWebhookUrl, (reply, error) => {
-          if (reply) onReply(reply);
-          else onReply(null, true);
-        });
-      };
-      recorder.start();
-    },
-    onSpeechEnd: () => {
-      showMicRecording(false);
-      if (recorder?.state === 'recording') recorder.stop();
-    },
-    modelURL: "./vad/silero_vad.onnx"
-  });
-
-  myvad.start();
-
-  setTimeout(() => {
-    isRecording = false;
-    myvad.destroy();
-    stream.getTracks().forEach(track => track.stop());
-    showMicRecording(false);
-  }, 5 * 60 * 1000);
-}
-
-function sendToMake(blob, url, onReply) {
-  if (isWaitingForReply) return;
-  isWaitingForReply = true;
-
-  const formData = new FormData();
-  formData.append('file', blob, 'audio.webm');
-  if (currentScenario?.id) formData.append('id', currentScenario.id);
-  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
-
-  fetch(url, { method: 'POST', body: formData })
-    .then(async res => {
-      const raw = await res.text();
-      try {
-        const json = JSON.parse(raw);
-        const decoded = atob(json.reply);
-        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-        onReply(cleanedReply);
-      } catch (e) {
-        console.error("Failed to decode:", e);
-        onReply(null, true);
-      }
-      isWaitingForReply = false;
-    })
-    .catch(err => {
-      console.error("Fetch error:", err);
-      onReply(null, true);
-      isWaitingForReply = false;
-    });
-}
-
-// Auto-load
 window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
 });
