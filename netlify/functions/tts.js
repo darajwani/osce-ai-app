@@ -1,4 +1,3 @@
-// ✅ Final tts.js with pitch, rate, style, and speaker voice handling
 const textToSpeech = require('@google-cloud/text-to-speech');
 
 exports.handler = async function (event) {
@@ -14,6 +13,7 @@ exports.handler = async function (event) {
   try {
     credentials = JSON.parse(process.env.GOOGLE_TTS_KEY);
   } catch (e) {
+    console.error("GOOGLE_TTS_KEY missing or invalid", e);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -27,37 +27,32 @@ exports.handler = async function (event) {
     const body = JSON.parse(event.body);
     const {
       text,
+      voiceName,
       languageCode = 'en-GB',
       gender = 'FEMALE',
       pitch = 0,
       speakingRate = 1,
-      style = 'default'
     } = body;
 
-    if (!text || typeof text !== 'string') {
+    if (!text) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing or invalid `text` in request body.' }),
+        body: JSON.stringify({ error: 'Missing `text` in request body.' }),
       };
     }
 
-    const escapedText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${escapedText}</prosody></speak>`;
+    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${speakingRate}">${text}</prosody></speak>`;
 
-    console.log("🔊 TTS Request:", { text, languageCode, gender, pitch, speakingRate, style });
-    console.log("📜 SSML:", ssmlText);
+    console.log("TTS request:", { text, voiceName, languageCode, gender, pitch, speakingRate });
+    console.log("Generated SSML:", ssmlText);
 
     const [response] = await client.synthesizeSpeech({
       input: { ssml: ssmlText },
-      voice: {
-        languageCode,
-        ssmlGender: gender,
-        name: undefined // Let Google auto-select based on gender & language
-      },
-      audioConfig: {
-        audioEncoding: 'MP3',
-      }
+      voice: voiceName
+        ? { name: voiceName, languageCode }
+        : { languageCode, ssmlGender: gender },
+      audioConfig: { audioEncoding: 'MP3' },
     });
 
     const base64Audio = Buffer.from(response.audioContent).toString('base64');
@@ -68,7 +63,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({ audioContent: base64Audio }),
     };
   } catch (error) {
-    console.error("❌ TTS Error:", error);
+    console.error("TTS Error:", error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
