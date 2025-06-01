@@ -1,4 +1,4 @@
-// ✅ Final working script.js with dual actor support (station 64) + VAD + clean dropdown
+// ✅ Final, fixed script.js with working dropdown, VAD, dual voices
 
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -61,134 +61,6 @@ function populateScenarioDropdown(scenarios) {
   });
 }
 
-function parseMultiActorScript(script) {
-  const lines = script.split(/\n|\\n/).map(l => l.trim()).filter(Boolean);
-  const sequence = [];
-  for (const line of lines) {
-    if (line.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
-    const match = line.match(/^\[(.*?)\]\s*(.*)$/);
-    if (match) sequence.push({ speaker: match[1].toUpperCase(), text: match[2] });
-  }
-  return sequence;
-}
-
-function queueAndSpeakReply(text, speakerOverride = null) {
-  audioQueue.push({ text, speaker: speakerOverride });
-  if (!isSpeaking) playNextInQueue();
-}
-
-function playNextInQueue() {
-  if (audioQueue.length === 0) {
-    isSpeaking = false;
-    return;
-  }
-  const { text, speaker } = audioQueue.shift();
-  isSpeaking = true;
-  const config = speakerVoices[speaker] || {
-    gender: currentScenario?.gender || 'FEMALE',
-    languageCode: currentScenario?.languageCode || 'en-GB',
-    style: currentScenario?.styleTag || 'neutral',
-    pitch: parseFloat(currentScenario?.pitch || 0),
-    speakingRate: parseFloat(currentScenario?.speakingRate || 1)
-  };
-  fetch('/.netlify/functions/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, ...config })
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (!data.audioContent) return;
-      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      audio.play().catch(console.warn);
-      audio.onended = () => { isSpeaking = false; playNextInQueue(); };
-    })
-    .catch(err => { console.warn("TTS error", err); isSpeaking = false; playNextInQueue(); });
-}
-
-function showReplyFromScript(script) {
-  const sequence = parseMultiActorScript(script);
-  for (const part of sequence) {
-    const el = document.createElement('p');
-    el.style.marginTop = "10px";
-    el.style.padding = "8px";
-    el.style.borderRadius = "6px";
-    el.style.backgroundColor = "#f2f2f2";
-    el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
-    document.getElementById('chat-container').appendChild(el);
-    queueAndSpeakReply(part.text, part.speaker);
-  }
-}
-
-function showReply(replyText, isError) {
-  const el = document.createElement('p');
-  el.style.marginTop = "10px";
-  el.style.padding = "8px";
-  el.style.borderRadius = "6px";
-  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-
-  const visible = isError
-    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
-    : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-
-  const voiceCleaned = replyText
-    .replace(/\[(.*?)\]/g, '')
-    .replace(/\(.*?\)/g, '')
-    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
-    .replace(/🧑‍⚕️|🧑‍⚖️|👩‍⚕️|🧑‍🦰|👨‍⚕️|👨‍🦰|👩‍🦰/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  el.innerHTML = visible;
-  document.getElementById('chat-container').appendChild(el);
-
-  if (!isError && replyText) {
-    queueAndSpeakReply(voiceCleaned);
-  }
-}
-
-document.getElementById("start-random-btn").addEventListener("click", () => {
-  if (allScenarios.length === 0) return;
-  const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
-  loadScenario(randomScenario);
-});
-
-document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
-  const selectedId = e.target.value;
-  const selectedScenario = allScenarios.find(s => s.id === selectedId);
-  if (selectedScenario) loadScenario(selectedScenario);
-});
-
-function loadScenario(scenario) {
-  currentScenario = scenario;
-  document.getElementById("scenario-title").textContent = scenario.title;
-  document.getElementById("scenario-text").textContent = scenario.prompt_text;
-  document.getElementById("scenario-box").style.display = "block";
-  document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
-  document.getElementById("start-station-btn").style.display = "inline-block";
-  document.getElementById("stop-station-btn").style.display = "none";
-  document.getElementById("chat-container").style.display = "none";
-}
-
-document.getElementById("start-station-btn").addEventListener("click", () => {
-  document.getElementById("start-station-btn").style.display = "none";
-  document.getElementById("stop-station-btn").style.display = "inline-block";
-  document.getElementById("chat-container").style.display = "block";
-
-  startTimer(300);
-  sessionEndTime = Date.now() + 5 * 60 * 1000;
-  isRecording = true;
-  startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
-
-  if (currentScenario?.id === '64') {
-    showReplyFromScript(currentScenario.script);
-  }
-});
-
-document.getElementById("stop-station-btn").addEventListener("click", () => {
-  location.reload();
-});
-
 function startTimer(duration) {
   let timer = duration;
   const timerDisplay = document.getElementById("timer");
@@ -206,10 +78,154 @@ function startTimer(duration) {
   }, 1000);
 }
 
+function showReply(replyText, isError) {
+  const el = document.createElement('p');
+  el.style.marginTop = "10px";
+  el.style.padding = "8px";
+  el.style.borderRadius = "6px";
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+
+  const visible = isError
+    ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
+    : "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+
+  const voiceCleaned = replyText
+    .replace(/\[(.*?)\]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
+    .replace(/[🧑‍⚕️🧑‍⚖️👩‍⚕️🧑‍🦰👨‍⚕️👨‍🦰👩‍🦰]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  el.innerHTML = visible;
+  document.getElementById('chat-container').appendChild(el);
+
+  if (!isError && replyText) {
+    queueAndSpeakReply(voiceCleaned);
+  }
+}
+
+function queueAndSpeakReply(text, speaker = null) {
+  audioQueue.push({ text, speaker });
+  if (!isSpeaking) playNextInQueue();
+}
+
+function playNextInQueue() {
+  if (audioQueue.length === 0) {
+    isSpeaking = false;
+    return;
+  }
+  const { text, speaker } = audioQueue.shift();
+  isSpeaking = true;
+
+  if (!text || typeof text !== 'string' || !text.trim()) {
+    isSpeaking = false;
+    return playNextInQueue();
+  }
+
+  const config = speakerVoices[speaker] || {
+    gender: currentScenario?.gender || 'FEMALE',
+    languageCode: currentScenario?.languageCode || 'en-GB',
+    style: currentScenario?.styleTag || 'neutral',
+    pitch: parseFloat(currentScenario?.pitch || 0),
+    speakingRate: parseFloat(currentScenario?.speakingRate || 1)
+  };
+
+  fetch('/.netlify/functions/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, ...config })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.audioContent) {
+        isSpeaking = false;
+        return playNextInQueue();
+      }
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      audio.play().catch(console.warn);
+      audio.onended = () => {
+        isSpeaking = false;
+        playNextInQueue();
+      };
+    })
+    .catch(err => {
+      console.warn("TTS error:", err);
+      isSpeaking = false;
+      playNextInQueue();
+    });
+}
+
+function parseMultiActorScript(script) {
+  const lines = script.split(/\n|\\n/).map(l => l.trim()).filter(Boolean);
+  const sequence = [];
+  for (const line of lines) {
+    if (line.toUpperCase().includes("---DOCTOR-INTERVENTION---")) break;
+    const match = line.match(/^\[(.*?)\]\s*(.*)$/);
+    if (match) sequence.push({ speaker: match[1].toUpperCase(), text: match[2] });
+  }
+  return sequence;
+}
+
+function showReplyFromScript(script) {
+  const sequence = parseMultiActorScript(script);
+  for (const part of sequence) {
+    const el = document.createElement('p');
+    el.style.marginTop = "10px";
+    el.style.padding = "8px";
+    el.style.borderRadius = "6px";
+    el.style.backgroundColor = "#f2f2f2";
+    el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
+    document.getElementById('chat-container').appendChild(el);
+    queueAndSpeakReply(part.text, part.speaker);
+  }
+}
+
+document.getElementById("start-random-btn").addEventListener("click", () => {
+  const random = allScenarios[Math.floor(Math.random() * allScenarios.length)];
+  loadScenario(random);
+});
+
+document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
+  const selected = allScenarios.find(s => s.id === e.target.value);
+  if (selected) loadScenario(selected);
+});
+
+function loadScenario(scenario) {
+  currentScenario = scenario;
+  isRecording = false;
+  showMicRecording(false);
+
+  document.getElementById("scenario-title").textContent = scenario.title;
+  document.getElementById("scenario-text").textContent = scenario.prompt_text;
+  document.getElementById("scenario-box").style.display = "block";
+  document.getElementById("chat-container").innerHTML = "<b>AI Patient Replies:</b><br>";
+  document.getElementById("chat-container").style.display = "none";
+
+  document.getElementById("start-station-btn").style.display = "inline-block";
+  document.getElementById("stop-station-btn").style.display = "none";
+}
+
+document.getElementById("start-station-btn").addEventListener("click", () => {
+  document.getElementById("start-station-btn").style.display = "none";
+  document.getElementById("stop-station-btn").style.display = "inline-block";
+  document.getElementById("chat-container").style.display = "block";
+
+  startTimer(300);
+  sessionEndTime = Date.now() + 5 * 60 * 1000;
+  isRecording = true;
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
+
+  if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
+});
+
+document.getElementById("stop-station-btn").addEventListener("click", () => {
+  location.reload();
+});
+
 async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   lastMediaStream = stream;
-
   let recorder = null;
   let chunks = [];
 
@@ -276,6 +292,7 @@ function sendToMake(blob, url, onReply) {
     });
 }
 
+// On load
 window.addEventListener('DOMContentLoaded', () => {
   getScenarios();
 });
