@@ -1,3 +1,4 @@
+// Top-level state
 let isWaitingForReply = false;
 let currentScenario = null;
 let allScenarios = [];
@@ -8,7 +9,6 @@ let isSpeaking = false;
 let audioQueue = [];
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
-// ✅ Correct CSV link
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
 const speakerVoices = {
@@ -140,7 +140,6 @@ function playNextInQueue() {
     });
 }
 
-// ⏱ Timer
 function startTimer(duration) {
   let timer = duration;
   const timerDisplay = document.getElementById("timer");
@@ -158,7 +157,6 @@ function startTimer(duration) {
   }, 1000);
 }
 
-// 🎲 Button Events
 document.getElementById("start-random-btn").addEventListener("click", () => {
   if (allScenarios.length === 0) return;
   const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
@@ -198,7 +196,77 @@ document.getElementById("stop-station-btn").addEventListener("click", () => {
   location.reload();
 });
 
-// ✅ Auto-load scenarios when DOM is ready
+async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  lastMediaStream = stream;
+
+  let recorder = null;
+  let chunks = [];
+
+  const myvad = await vad.MicVAD.new({
+    onSpeechStart: () => {
+      showMicRecording(true);
+      chunks = [];
+      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        sendToMake(blob, makeWebhookUrl, (reply, error) => {
+          if (reply) onReply(reply);
+          else onReply(null, true);
+        });
+      };
+      recorder.start();
+    },
+    onSpeechEnd: () => {
+      showMicRecording(false);
+      if (recorder?.state === 'recording') recorder.stop();
+    },
+    modelURL: "./vad/silero_vad.onnx"
+  });
+
+  myvad.start();
+
+  setTimeout(() => {
+    isRecording = false;
+    myvad.destroy();
+    stream.getTracks().forEach(track => track.stop());
+    showMicRecording(false);
+  }, 5 * 60 * 1000);
+}
+
+function sendToMake(blob, url, onReply) {
+  if (isWaitingForReply) return;
+  isWaitingForReply = true;
+
+  const formData = new FormData();
+  formData.append('file', blob, 'audio.webm');
+  if (currentScenario?.id) formData.append('id', currentScenario.id);
+  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
+
+  fetch(url, { method: 'POST', body: formData })
+    .then(async res => {
+      const raw = await res.text();
+      try {
+        const json = JSON.parse(raw);
+        const decoded = atob(json.reply);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+        onReply(cleanedReply);
+      } catch (e) {
+        console.error("Failed to decode:", e);
+        onReply(null, true);
+      }
+      isWaitingForReply = false;
+    })
+    .catch(err => {
+      console.error("Fetch error:", err);
+      onReply(null, true);
+      isWaitingForReply = false;
+    });
+}
+
+// Auto-load
 window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
 });
