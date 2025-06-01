@@ -188,3 +188,6 @@ function startTimer(duration) {
     }
   }, 1000);
 }
+window.addEventListener("DOMContentLoaded", () => {
+  getScenarios();
+});
