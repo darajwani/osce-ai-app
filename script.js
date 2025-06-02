@@ -205,16 +205,22 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
     const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
       "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
     const voiceCleaned = replyText
-      .replace(/\[(.*?)\]/g, '').replace(/\(.*?\)/g, '')
-      .replace(/\b(um+|mm+|ah+|eh+|uh+)[.,]?/gi, '')
-      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '').replace(/\s+/g, ' ').trim();
+  .replace(/\[(.*?)\]/g, '')
+  .replace(/\(.*?\)/g, '')
+  .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
+  .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
     el.innerHTML = visible;
     document.getElementById('chat-container').appendChild(el);
     if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
   }
 
   startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
-  if (currentScenario?.script?.includes("[")) showReplyFromScript(currentScenario.script);
+  if (currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
+  showReplyFromScript(currentScenario.script);
+}
+
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
