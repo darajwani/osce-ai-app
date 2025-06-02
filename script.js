@@ -11,7 +11,6 @@ window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + 
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
-
 function showMicRecording(isRec) {
   const mic = document.getElementById("mic-icon");
   if (!mic) return;
@@ -90,59 +89,29 @@ function playNextInQueue() {
   const { text, speaker } = audioQueue.shift();
   isSpeaking = true;
 
-    let voiceConfig;
+  let voiceConfig;
 
-  // 🔹 Custom voice settings ONLY for Station ID 64
   if (currentScenario?.id === "64") {
     if (speaker === "MOTHER") {
-      voiceConfig = {
-        gender: "FEMALE",
-        languageCode: currentScenario.languageCode || "en-GB",
-        pitch: -6,
-        speakingRate: 0.8
-      };
+      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: -6, speakingRate: 0.8 };
     } else if (speaker === "CHILD") {
-      voiceConfig = {
-        gender: "FEMALE",
-        languageCode: currentScenario.languageCode || "en-GB",
-        pitch: 6,
-        speakingRate: 1.3
-      };
-    }
-  }
-
-  // 🔸 Fallback: match by speaker name from sheet
-  if (!voiceConfig) {
-    const matchByName = allScenarios.find(s =>
-      s.name?.toUpperCase() === speaker?.toUpperCase()
-    );
-    if (matchByName) {
-      voiceConfig = {
-        gender: matchByName.gender || 'FEMALE',
-        languageCode: matchByName.languageCode || 'en-GB',
-        pitch: parseFloat(matchByName.pitch || 0),
-        speakingRate: parseFloat(matchByName.speakingRate || 1)
-      };
-    } else {
-      // 🔸 Final fallback: use current scenario defaults
-      voiceConfig = {
-        gender: currentScenario?.gender || 'FEMALE',
-        languageCode: currentScenario?.languageCode || 'en-GB',
-        pitch: parseFloat(currentScenario?.pitch || 0),
-        speakingRate: parseFloat(currentScenario?.speakingRate || 1)
-      };
+      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: 6, speakingRate: 1.3 };
     }
   }
 
   if (!voiceConfig) {
     const matchByName = allScenarios.find(s => s.name?.toUpperCase() === speaker?.toUpperCase());
-    voiceConfig = matchByName ? {
-      gender: matchByName.gender, languageCode: matchByName.languageCode,
-      pitch: parseFloat(matchByName.pitch || 0), speakingRate: parseFloat(matchByName.speakingRate || 1)
-    } : {
-      gender: currentScenario?.gender || 'FEMALE', languageCode: currentScenario?.languageCode || 'en-GB',
-      pitch: parseFloat(currentScenario?.pitch || 0), speakingRate: parseFloat(currentScenario?.speakingRate || 1)
-    };
+    if (matchByName) {
+      voiceConfig = {
+        gender: matchByName.gender || 'FEMALE', languageCode: matchByName.languageCode || 'en-GB',
+        pitch: parseFloat(matchByName.pitch || 0), speakingRate: parseFloat(matchByName.speakingRate || 1)
+      };
+    } else {
+      voiceConfig = {
+        gender: currentScenario?.gender || 'FEMALE', languageCode: currentScenario?.languageCode || 'en-GB',
+        pitch: parseFloat(currentScenario?.pitch || 0), speakingRate: parseFloat(currentScenario?.speakingRate || 1)
+      };
+    }
   }
 
   fetch('/.netlify/functions/tts', {
@@ -196,6 +165,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   sessionEndTime = Date.now() + 5 * 60 * 1000;
   isRecording = true;
 
+  let hasFirstReplyHappened = false;
+
   function showReply(replyText, isError = false) {
     const el = document.createElement('p');
     el.style.marginTop = "10px";
@@ -205,22 +176,24 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
     const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
       "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
     const voiceCleaned = replyText
-  .replace(/\[(.*?)\]/g, '')
-  .replace(/\(.*?\)/g, '')
-  .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
-  .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
-  .replace(/\s+/g, ' ')
-  .trim();
+      .replace(/\[(.*?)\]/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
+      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     el.innerHTML = visible;
     document.getElementById('chat-container').appendChild(el);
     if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
+
+    // Trigger scripted argument only after first reply
+    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
+      hasFirstReplyHappened = true;
+      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
+    }
   }
 
   startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
-  if (currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
-  showReplyFromScript(currentScenario.script);
-}
-
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
@@ -310,5 +283,4 @@ function sendToMake(blob, url, onReply) {
     });
 }
 
-// Auto-load scenarios
 window.addEventListener("DOMContentLoaded", () => getScenarios());
