@@ -95,7 +95,7 @@ function playNextInQueue() {
     if (speaker === "MOTHER") {
       voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: -6, speakingRate: 0.8 };
     } else if (speaker === "CHILD") {
-      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: 6, speakingRate: 1.3 };
+      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: 6, speakingRate: 1.2 };
     }
   }
 
