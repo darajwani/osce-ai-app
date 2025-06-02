@@ -11,9 +11,7 @@ window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + 
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
 
-const speakerVoices = {
-  "MOTHER": { gender: "FEMALE", languageCode: "en-GB", pitch: -2, speakingRate: 0.95 },
-  "CHILD": { gender: "FEMALE", languageCode: "en-GB", pitch: 4, speakingRate: 1.15 }
+
 };
 
 function showMicRecording(isRec) {
@@ -94,7 +92,50 @@ function playNextInQueue() {
   const { text, speaker } = audioQueue.shift();
   isSpeaking = true;
 
-  let voiceConfig = speakerVoices[speaker];
+    let voiceConfig;
+
+  // 🔹 Custom voice settings ONLY for Station ID 64
+  if (currentScenario?.id === "64") {
+    if (speaker === "MOTHER") {
+      voiceConfig = {
+        gender: "FEMALE",
+        languageCode: currentScenario.languageCode || "en-GB",
+        pitch: -6,
+        speakingRate: 0.8
+      };
+    } else if (speaker === "CHILD") {
+      voiceConfig = {
+        gender: "FEMALE",
+        languageCode: currentScenario.languageCode || "en-GB",
+        pitch: 6,
+        speakingRate: 1.3
+      };
+    }
+  }
+
+  // 🔸 Fallback: match by speaker name from sheet
+  if (!voiceConfig) {
+    const matchByName = allScenarios.find(s =>
+      s.name?.toUpperCase() === speaker?.toUpperCase()
+    );
+    if (matchByName) {
+      voiceConfig = {
+        gender: matchByName.gender || 'FEMALE',
+        languageCode: matchByName.languageCode || 'en-GB',
+        pitch: parseFloat(matchByName.pitch || 0),
+        speakingRate: parseFloat(matchByName.speakingRate || 1)
+      };
+    } else {
+      // 🔸 Final fallback: use current scenario defaults
+      voiceConfig = {
+        gender: currentScenario?.gender || 'FEMALE',
+        languageCode: currentScenario?.languageCode || 'en-GB',
+        pitch: parseFloat(currentScenario?.pitch || 0),
+        speakingRate: parseFloat(currentScenario?.speakingRate || 1)
+      };
+    }
+  }
+
   if (!voiceConfig) {
     const matchByName = allScenarios.find(s => s.name?.toUpperCase() === speaker?.toUpperCase());
     voiceConfig = matchByName ? {
