@@ -1,133 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OSCE Practice</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSCE AI Practice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #f5f6fa;
-      padding: 40px;
-      text-align: center;
-      margin: 0;
-    }
-    h1 {
-      font-size: 2.2rem;
-      margin-bottom: 10px;
-    }
-    p {
-      margin-bottom: 20px;
-    }
-    select, button {
-      margin: 6px;
-      padding: 10px 16px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      background: white;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    button:hover, select:hover {
-      background: #f0f0f0;
-    }
-    #controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    #start-station-btn, #stop-station-btn {
-      display: none;
-    }
-    #mic-icon {
-      margin: 30px auto 20px;
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      background: #eee url('https://img.icons8.com/ios-filled/50/000000/microphone.png') center/26px no-repeat;
-      box-shadow: 0 0 12px #ccc;
-      transition: box-shadow 0.2s, background 0.2s;
-    }
-    #mic-icon.mic-recording {
-      background-color: #ffeaea;
-      box-shadow: 0 0 0 8px #ff5252aa, 0 0 20px #ff5252;
-      animation: pulse 1s infinite;
+    body { font-family: 'Inter', sans-serif; }
+    .pulse {
+      animation: pulse 2s infinite;
     }
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
-      50% { box-shadow: 0 0 0 16px #ff525222, 0 0 32px #ff5252; }
-      100% { box-shadow: 0 0 0 8px #ff5252aa, 0 0 16px #ff5252; }
-    }
-    #scenario-box {
-      display: none;
-      margin-top: 30px;
-      text-align: left;
-      max-width: 720px;
-      margin-left: auto;
-      margin-right: auto;
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-    #chat-container {
-      display: none;
-      margin-top: 20px;
-      padding: 16px;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      max-height: 300px;
-      overflow-y: auto;
-      background: #fefefe;
-    }
-    #scenario-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    #scenario-text {
-      font-size: 1rem;
-      line-height: 1.6;
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.6; }
     }
   </style>
 </head>
-<body>
-
-  <h1>Practice OSCE</h1>
-  <p>
-    Select a random scenario or choose one from the list.<br>
-    <small><b>Tip:</b> Speak after each AI response. Session lasts 5 minutes.</small>
-  </p>
-
-  <div id="controls">
-    <button id="start-random-btn">🎲 Random Scenario</button>
-    <select id="scenario-dropdown">
-      <option value="">-- Select a scenario --</option>
-    </select>
+<body class="bg-gray-100 text-gray-800">
+  <!-- Prompt Header -->
+  <div class="w-full bg-white shadow-md sticky top-0 z-10 p-4 text-center text-lg font-semibold border-b">
+    📋 <span id="doorNote">You are the SHO in A&E. Please assess the patient with abdominal pain.</span>
   </div>
 
-  <div>
-    <button id="start-station-btn">▶️ Start Station</button>
-    <button id="stop-station-btn">⏹️ Stop</button>
+  <!-- Main Layout -->
+  <div class="flex flex-col md:flex-row h-[calc(100vh-4rem)] p-4 gap-4">
+
+    <!-- Left Panel: Controls -->
+    <div class="w-full md:w-1/4 bg-white rounded-2xl shadow p-4 flex flex-col gap-4">
+      <button class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-xl shadow transition-all">🎲 Random Scenario</button>
+      <select class="w-full p-2 border rounded-xl text-sm h-40 overflow-y-auto">
+        <option title="Chest Pain in 55-year-old male">Chest Pain in 55-year-old male</option>
+        <option title="Shortness of Breath - Asthma">Shortness of Breath - Asthma</option>
+        <option title="Dental Trauma - Avulsed Incisor">Dental Trauma - Avulsed Incisor</option>
+        <!-- Add more scenarios here -->
+      </select>
+      <button class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-xl shadow">▶️ Start</button>
+      <button class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-xl shadow">⏹️ Stop</button>
+    </div>
+
+    <!-- Center Panel: Mic + Timer -->
+    <div class="w-full md:w-1/2 flex flex-col justify-center items-center bg-white rounded-2xl shadow p-6 relative">
+      <div class="text-3xl font-semibold mb-4 flex items-center gap-2">
+        <span>🕒</span>
+        <span id="timer">05:00</span>
+      </div>
+      <div class="relative flex flex-col items-center justify-center">
+        <div class="w-36 h-36 bg-blue-100 rounded-full flex items-center justify-center pulse">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1v22m0 0a5 5 0 100-10 5 5 0 000 10z" />
+          </svg>
+        </div>
+        <div class="text-sm text-gray-500 text-center mt-4" id="status">Listening...</div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Transcript -->
+    <div class="w-full md:w-1/4 bg-white rounded-2xl shadow p-4 overflow-y-auto">
+      <div class="text-xs text-gray-400 mb-2 flex justify-between">
+        <span>📝 Transcript</span>
+        <button class="text-blue-400 text-xs" onclick="toggleTranscript()">Hide</button>
+      </div>
+      <div id="transcriptBox" class="text-sm text-gray-400 space-y-2">
+        <p><strong>You:</strong> Hello, I'm the doctor looking after you today...</p>
+        <p><strong>Patient:</strong> Hi doctor, I've had this pain for a few days now...</p>
+        <!-- More transcript lines -->
+      </div>
+    </div>
+
   </div>
 
-  <div id="mic-icon" class="mic-idle" title="Microphone"></div>
-
-  <div id="scenario-box">
-    <h2 id="scenario-title"></h2>
-    <p id="scenario-text"></p>
-    <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
-    <div id="chat-container"><b>AI Patient Replies:</b><br></div>
-  </div>
-
-  <!-- ONNX Runtime -->
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
-  <!-- VAD -->
-  <script src="./vad/bundle.min.js"></script>
-  <!-- Main Logic -->
-  <script src="script.js"></script>
+  <script>
+    function toggleTranscript() {
+      const box = document.getElementById('transcriptBox');
+      box.classList.toggle('hidden');
+    }
+  </script>
 </body>
 </html>
