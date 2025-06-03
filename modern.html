@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OSCE AI – Flow V3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSCE AI – V5 Final Flow</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -22,11 +22,11 @@
 </head>
 <body class="text-gray-800">
 
-  <!-- SCENARIO SELECT SCREEN -->
-  <div id="scenarioScreen" class="min-h-screen flex items-center justify-center px-4">
-    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-6 border border-gray-200">
-      <h1 class="text-xl font-semibold text-center">🧠 Choose Your Scenario</h1>
+  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-8 text-center gap-8">
 
+    <!-- Scenario Selector -->
+    <div id="scenarioCard" class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-6 border border-gray-200">
+      <h1 class="text-xl font-semibold">🧠 Choose Your Scenario</h1>
       <div class="flex flex-col gap-4">
         <div>
           <label class="text-sm font-medium text-gray-600 mb-1 block">Select Specific Station</label>
@@ -37,70 +37,94 @@
             <option>Dental Trauma - Avulsed Incisor</option>
           </select>
         </div>
-
         <div class="flex justify-center">
-          <button onclick="startWithRandom()" class="text-sm text-blue-600 hover:text-blue-800 underline">
+          <button onclick="useRandom()" class="text-sm text-blue-600 hover:text-blue-800 underline">
             🎲 Use Random Scenario
           </button>
         </div>
-
-        <button onclick="goToStation()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium">
-          Continue ➝
-        </button>
       </div>
     </div>
-  </div>
 
-  <!-- MAIN INTERACTION SCREEN -->
-  <div id="stationScreen" class="hidden min-h-screen flex flex-col items-center justify-center text-center px-4 gap-6">
-    <!-- Prompt -->
-    <div id="doorNote" class="text-md font-medium text-gray-700 max-w-xl">📋 Prompt will go here...</div>
+    <!-- Prompt (hidden initially) -->
+    <div id="doorNote" class="hidden text-md font-medium text-gray-700 max-w-xl"></div>
 
-    <!-- Timer -->
-    <div id="timer" class="text-lg text-gray-500 tracking-widest">05:00</div>
+    <!-- Timer (hidden initially) -->
+    <div id="timer" class="hidden text-sm text-gray-500 tracking-widest">05:00</div>
 
-    <!-- Mic Button -->
-    <div>
-      <button id="micButton" onclick="handleMicClick()" class="w-28 h-28 bg-gradient-to-br from-indigo-500 to-sky-500 text-white rounded-full flex items-center justify-center text-3xl shadow-xl pulse">
-        ▶️
-      </button>
-      <div id="micLabel" class="text-sm text-gray-600 mt-3">Start</div>
+    <!-- Mic Ring + Label -->
+    <div id="micContainer" class="hidden flex flex-col items-center gap-3">
+      <div id="micRing" class="w-28 h-28 bg-gradient-to-br from-indigo-500 to-sky-500 text-white rounded-full flex items-center justify-center text-3xl shadow-xl pulse">
+        🎤
+      </div>
+      <div id="micLabel" class="text-sm text-gray-600">Idle</div>
     </div>
+
+    <!-- Start/Stop Button -->
+    <div id="controlButtonWrapper" class="hidden">
+      <button id="controlButton" onclick="toggleSession()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow">
+        ▶️ Start
+      </button>
+    </div>
+
+    <!-- Change Scenario -->
+    <div id="changeScenarioBtn" class="hidden text-xs text-blue-600 cursor-pointer hover:underline" onclick="resetSession()">
+      🔄 Change Scenario
+    </div>
+
   </div>
 
   <script>
-    let currentState = 'start'; // start, listening, stop
+    let sessionActive = false;
 
-    function goToStation() {
-      const dropdown = document.getElementById('scenarioDropdown');
-      const selected = dropdown.value || 'Random Scenario';
-      document.getElementById('doorNote').innerText = `📋 ${selected}`;
-      document.getElementById('scenarioScreen').classList.add('hidden');
-      document.getElementById('stationScreen').classList.remove('hidden');
-    }
-
-    function startWithRandom() {
+    function useRandom() {
       document.getElementById('scenarioDropdown').value = 'Random Scenario';
     }
 
-    function handleMicClick() {
-      const mic = document.getElementById('micButton');
-      const label = document.getElementById('micLabel');
-      if (currentState === 'start') {
-        mic.innerText = '🎤';
-        label.innerText = 'Listening...';
-        currentState = 'listening';
-        // Start timer, voice input etc.
-      } else if (currentState === 'listening') {
-        mic.innerText = '⏹️';
-        label.innerText = 'Stop';
-        currentState = 'stop';
-        // Pause interaction
+    function toggleSession() {
+      if (!sessionActive) {
+        const selected = document.getElementById('scenarioDropdown').value || 'Random Scenario';
+        if (!selected || selected === '-- Select a Station --') {
+          alert('Please select a station or use random.');
+          return;
+        }
+        document.getElementById('scenarioCard').classList.add('hidden');
+        document.getElementById('doorNote').classList.remove('hidden');
+        document.getElementById('timer').classList.remove('hidden');
+        document.getElementById('micContainer').classList.remove('hidden');
+        document.getElementById('controlButtonWrapper').classList.remove('hidden');
+        document.getElementById('changeScenarioBtn').classList.remove('hidden');
+
+        document.getElementById('doorNote').innerText = `📋 ${selected}`;
+        document.getElementById('controlButton').innerText = '⏹️ Stop';
+        document.getElementById('micLabel').innerText = 'Listening...';
+
+        sessionActive = true;
+        // TODO: start timer and voice system
       } else {
-        mic.innerText = '▶️';
-        label.innerText = 'Start';
-        currentState = 'start';
-        // Reset session
+        resetSession();
+      }
+    }
+
+    function resetSession() {
+      sessionActive = false;
+      document.getElementById('scenarioCard').classList.remove('hidden');
+      document.getElementById('doorNote').classList.add('hidden');
+      document.getElementById('timer').classList.add('hidden');
+      document.getElementById('micContainer').classList.add('hidden');
+      document.getElementById('controlButtonWrapper').classList.add('hidden');
+      document.getElementById('changeScenarioBtn').classList.add('hidden');
+
+      document.getElementById('controlButton').innerText = '▶️ Start';
+      document.getElementById('micLabel').innerText = 'Idle';
+    }
+
+    // Optional: can be triggered during session
+    function setVoiceState(state) {
+      const micLabel = document.getElementById('micLabel');
+      if (state === 'user') {
+        micLabel.innerText = 'You are speaking...';
+      } else if (state === 'ai') {
+        micLabel.innerText = 'AI is replying...';
       }
     }
   </script>
