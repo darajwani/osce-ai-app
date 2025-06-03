@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OSCE AI – Modern V2</title>
+  <title>OSCE AI – Futuristic</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&display=swap" rel="stylesheet" />
   <style>
@@ -16,7 +16,10 @@
     }
     @keyframes pulse {
       0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.7; }
+      50% { transform: scale(1.05); opacity: 0.6; }
+    }
+    .ai-glow {
+      box-shadow: 0 0 20px rgba(125, 211, 252, 0.6), 0 0 30px rgba(147, 197, 253, 0.3);
     }
   </style>
 </head>
@@ -32,25 +35,39 @@
 
     <!-- Mic + Timer Block -->
     <div class="flex flex-col items-center gap-6 bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30 max-w-md w-full">
-      <div class="text-4xl font-semibold flex items-center gap-2">
-        🕒 <span id="timer">05:00</span>
+
+      <!-- Circular futuristic timer -->
+      <div class="relative w-28 h-28 mb-4">
+        <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="16" fill="none" stroke="#e5e7eb" stroke-width="2" />
+          <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="25" stroke-linecap="round" />
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center text-2xl font-bold text-indigo-600">
+          <span id="timer">05:00</span>
+        </div>
       </div>
 
+      <!-- Mic with AI/You state -->
       <div class="relative">
-        <div class="w-44 h-44 bg-gradient-to-br from-indigo-500 to-sky-500 rounded-full flex items-center justify-center shadow-xl pulse">
+        <div id="micRing" class="w-44 h-44 bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-full flex items-center justify-center shadow-xl pulse ai-glow">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1v22m0 0a5 5 0 100-10 5 5 0 000 10z" />
           </svg>
         </div>
-        <div class="text-sm text-gray-600 mt-3">Listening...</div>
+        <div id="voiceState" class="text-sm text-gray-600 mt-3">Listening...</div>
       </div>
 
+      <!-- Scenario Button -->
+      <button onclick="toggleModal()" class="text-sm text-indigo-600 hover:text-indigo-800 underline">
+        🎛️ Select Scenario
+      </button>
+
       <!-- Start/Stop Buttons -->
-      <div class="flex gap-4 mt-4">
-        <button class="bg-gradient-to-r from-violet-500 to-indigo-500 text-white py-2 px-6 rounded-full shadow hover:shadow-lg transition">
+      <div class="flex gap-4 mt-2">
+        <button class="bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white py-2 px-6 rounded-full shadow hover:shadow-lg transition">
           ▶️ Start
         </button>
-        <button class="bg-gradient-to-r from-pink-400 to-rose-500 text-white py-2 px-6 rounded-full shadow hover:shadow-lg transition">
+        <button class="bg-gradient-to-r from-[#0F2027] via-[#203A43] to-[#2C5364] text-white py-2 px-6 rounded-full shadow hover:shadow-lg transition">
           ⏹️ Stop
         </button>
       </div>
@@ -66,13 +83,48 @@
       <p><strong>You:</strong> Hello, I'm the doctor looking after you today...</p>
       <p><strong>Patient:</strong> Hi doctor, I've had this pain for a few days now...</p>
     </div>
+  </div>
 
+  <!-- Scenario Modal -->
+  <div id="modal" class="hidden fixed inset-0 z-30 flex items-center justify-center bg-black/30">
+    <div class="bg-white rounded-2xl p-6 w-[90%] max-w-md shadow-xl border border-gray-200">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">🧠 Choose Scenario</h2>
+        <button onclick="toggleModal()" class="text-gray-500 hover:text-gray-700">✖️</button>
+      </div>
+      <select class="w-full p-2 mb-4 rounded-xl text-sm border border-gray-300">
+        <option title="Chest Pain in 55-year-old male">Chest Pain in 55-year-old male</option>
+        <option title="Shortness of Breath - Asthma">Shortness of Breath - Asthma</option>
+        <option title="Dental Trauma - Avulsed Incisor">Dental Trauma - Avulsed Incisor</option>
+        <!-- Add more scenarios -->
+      </select>
+      <button class="bg-gradient-to-r from-blue-500 to-purple-500 text-white w-full py-2 rounded-xl shadow hover:shadow-lg">🎲 Random Scenario</button>
+    </div>
   </div>
 
   <script>
     function toggleTranscript() {
       const box = document.getElementById('transcriptBox');
       box.classList.toggle('hidden');
+    }
+    function toggleModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.toggle('hidden');
+    }
+
+    // Example for changing mic state dynamically (you can hook this into your app logic)
+    function setVoiceState(state) {
+      const mic = document.getElementById('micRing');
+      const label = document.getElementById('voiceState');
+      if (state === 'user') {
+        mic.classList.remove('from-fuchsia-500', 'to-indigo-500');
+        mic.classList.add('from-green-400', 'to-lime-500');
+        label.innerText = 'You are speaking...';
+      } else {
+        mic.classList.remove('from-green-400', 'to-lime-500');
+        mic.classList.add('from-fuchsia-500', 'to-indigo-500');
+        label.innerText = 'AI is replying...';
+      }
     }
   </script>
 
