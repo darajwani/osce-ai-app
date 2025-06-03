@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OSCE AI – Futuristic</title>
+  <title>OSCE AI – Flow V3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #f9fbff, #ffffff);
+      background-color: #f1f5f9;
     }
     .pulse {
       animation: pulse 2s infinite;
@@ -18,114 +18,89 @@
       0%, 100% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.05); opacity: 0.6; }
     }
-    .ai-glow {
-      box-shadow: 0 0 20px rgba(125, 211, 252, 0.6), 0 0 30px rgba(147, 197, 253, 0.3);
-    }
   </style>
 </head>
 <body class="text-gray-800">
 
-  <!-- Sticky Door Note -->
-  <div class="w-full bg-white/80 backdrop-blur shadow-md sticky top-0 z-20 p-4 text-center text-base font-semibold border-b tracking-wide text-gray-700">
-    📋 You are the SHO in A&E. Please assess the patient with abdominal pain.
-  </div>
+  <!-- SCENARIO SELECT SCREEN -->
+  <div id="scenarioScreen" class="min-h-screen flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md space-y-6 border border-gray-200">
+      <h1 class="text-xl font-semibold text-center">🧠 Choose Your Scenario</h1>
 
-  <!-- Main Container -->
-  <div class="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-10 text-center gap-10">
-
-    <!-- Mic + Timer Block -->
-    <div class="flex flex-col items-center gap-6 bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30 max-w-md w-full">
-
-      <!-- Simple timer -->
-      <div class="text-lg font-semibold text-gray-500 tracking-wider" id="timer">
-        05:00
-      </div>
-
-      <!-- Mic with AI/You state -->
-      <div class="relative">
-        <div id="micRing" class="w-44 h-44 bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-full flex items-center justify-center shadow-xl pulse ai-glow">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1v22m0 0a5 5 0 100-10 5 5 0 000 10z" />
-          </svg>
-        </div>
-        <div id="voiceState" class="text-sm text-gray-600 mt-3">Listening...</div>
-      </div>
-
-      <!-- Scenario Button -->
-      <button onclick="toggleModal()" class="text-sm text-indigo-600 hover:text-indigo-800 underline">
-        🎛️ Select Scenario
-      </button>
-
-      <!-- Start/Stop Buttons -->
-      <div class="flex gap-4 mt-2">
-        <button class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-6 rounded-xl shadow-md transition">
-          ▶️ Start
-        </button>
-        <button class="bg-rose-600 hover:bg-rose-700 text-white py-2 px-6 rounded-xl shadow-md transition">
-          ⏹️ Stop
-        </button>
-      </div>
-    </div>
-
-    <!-- Toggle Transcript -->
-    <div class="text-sm text-blue-500 cursor-pointer hover:underline" onclick="toggleTranscript()">
-      Show Transcript
-    </div>
-
-    <!-- Transcript Box (Hidden by default) -->
-    <div id="transcriptBox" class="hidden bg-white/80 backdrop-blur rounded-xl shadow max-w-xl w-full p-4 border border-white/30 text-left text-sm text-gray-500 space-y-2">
-      <p><strong>You:</strong> Hello, I'm the doctor looking after you today...</p>
-      <p><strong>Patient:</strong> Hi doctor, I've had this pain for a few days now...</p>
-    </div>
-  </div>
-
-  <!-- Scenario Modal -->
-  <div id="modal" class="hidden fixed inset-0 z-30 flex items-center justify-center bg-black/30">
-    <div class="bg-white rounded-2xl p-6 w-[90%] max-w-md shadow-xl border border-gray-200">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-semibold">🧠 Choose Scenario</h2>
-        <button onclick="toggleModal()" class="text-gray-500 hover:text-gray-700">✖️</button>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="flex flex-col gap-2">
-          <label class="text-sm text-gray-600 font-medium">Select Specific</label>
-          <select class="w-full p-2 rounded-lg text-sm border border-gray-300">
-            <option title="Chest Pain in 55-year-old male">Chest Pain in 55-year-old male</option>
-            <option title="Shortness of Breath - Asthma">Shortness of Breath - Asthma</option>
-            <option title="Dental Trauma - Avulsed Incisor">Dental Trauma - Avulsed Incisor</option>
-            <!-- Add more scenarios -->
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="text-sm font-medium text-gray-600 mb-1 block">Select Specific Station</label>
+          <select id="scenarioDropdown" class="w-full p-2 rounded-lg border border-gray-300">
+            <option value="">-- Select a Station --</option>
+            <option>Chest Pain in 55-year-old male</option>
+            <option>Shortness of Breath - Asthma</option>
+            <option>Dental Trauma - Avulsed Incisor</option>
           </select>
         </div>
-        <div class="flex flex-col gap-2 justify-end">
-          <label class="text-sm text-gray-600 font-medium">Or Choose Random</label>
-          <button class="bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2 rounded-lg shadow hover:shadow-md w-full">
-            🎲 Random Scenario
+
+        <div class="flex justify-center">
+          <button onclick="startWithRandom()" class="text-sm text-blue-600 hover:text-blue-800 underline">
+            🎲 Use Random Scenario
           </button>
         </div>
+
+        <button onclick="goToStation()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium">
+          Continue ➝
+        </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MAIN INTERACTION SCREEN -->
+  <div id="stationScreen" class="hidden min-h-screen flex flex-col items-center justify-center text-center px-4 gap-6">
+    <!-- Prompt -->
+    <div id="doorNote" class="text-md font-medium text-gray-700 max-w-xl">📋 Prompt will go here...</div>
+
+    <!-- Timer -->
+    <div id="timer" class="text-lg text-gray-500 tracking-widest">05:00</div>
+
+    <!-- Mic Button -->
+    <div>
+      <button id="micButton" onclick="handleMicClick()" class="w-28 h-28 bg-gradient-to-br from-indigo-500 to-sky-500 text-white rounded-full flex items-center justify-center text-3xl shadow-xl pulse">
+        ▶️
+      </button>
+      <div id="micLabel" class="text-sm text-gray-600 mt-3">Start</div>
     </div>
   </div>
 
   <script>
-    function toggleTranscript() {
-      const box = document.getElementById('transcriptBox');
-      box.classList.toggle('hidden');
+    let currentState = 'start'; // start, listening, stop
+
+    function goToStation() {
+      const dropdown = document.getElementById('scenarioDropdown');
+      const selected = dropdown.value || 'Random Scenario';
+      document.getElementById('doorNote').innerText = `📋 ${selected}`;
+      document.getElementById('scenarioScreen').classList.add('hidden');
+      document.getElementById('stationScreen').classList.remove('hidden');
     }
-    function toggleModal() {
-      const modal = document.getElementById('modal');
-      modal.classList.toggle('hidden');
+
+    function startWithRandom() {
+      document.getElementById('scenarioDropdown').value = 'Random Scenario';
     }
-    function setVoiceState(state) {
-      const mic = document.getElementById('micRing');
-      const label = document.getElementById('voiceState');
-      if (state === 'user') {
-        mic.classList.remove('from-fuchsia-500', 'to-indigo-500');
-        mic.classList.add('from-green-400', 'to-lime-500');
-        label.innerText = 'You are speaking...';
+
+    function handleMicClick() {
+      const mic = document.getElementById('micButton');
+      const label = document.getElementById('micLabel');
+      if (currentState === 'start') {
+        mic.innerText = '🎤';
+        label.innerText = 'Listening...';
+        currentState = 'listening';
+        // Start timer, voice input etc.
+      } else if (currentState === 'listening') {
+        mic.innerText = '⏹️';
+        label.innerText = 'Stop';
+        currentState = 'stop';
+        // Pause interaction
       } else {
-        mic.classList.remove('from-green-400', 'to-lime-500');
-        mic.classList.add('from-fuchsia-500', 'to-indigo-500');
-        label.innerText = 'AI is replying...';
+        mic.innerText = '▶️';
+        label.innerText = 'Start';
+        currentState = 'start';
+        // Reset session
       }
     }
   </script>
