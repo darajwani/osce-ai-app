@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OSCE AI – Futuristic</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body {
-      font-family: 'Manrope', sans-serif;
+      font-family: 'Inter', sans-serif;
       background: linear-gradient(135deg, #f9fbff, #ffffff);
     }
     .pulse {
@@ -26,7 +26,7 @@
 <body class="text-gray-800">
 
   <!-- Sticky Door Note -->
-  <div class="w-full bg-white/70 backdrop-blur shadow-md sticky top-0 z-20 p-4 text-center text-lg font-semibold border-b">
+  <div class="w-full bg-white/80 backdrop-blur shadow-md sticky top-0 z-20 p-4 text-center text-base font-semibold border-b tracking-wide text-gray-700">
     📋 You are the SHO in A&E. Please assess the patient with abdominal pain.
   </div>
 
@@ -36,15 +36,9 @@
     <!-- Mic + Timer Block -->
     <div class="flex flex-col items-center gap-6 bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30 max-w-md w-full">
 
-      <!-- Circular futuristic timer -->
-      <div class="relative w-28 h-28 mb-4">
-        <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r="16" fill="none" stroke="#e5e7eb" stroke-width="2" />
-          <circle cx="18" cy="18" r="16" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="25" stroke-linecap="round" />
-        </svg>
-        <div class="absolute inset-0 flex items-center justify-center text-2xl font-bold text-indigo-600">
-          <span id="timer">05:00</span>
-        </div>
+      <!-- Simple timer -->
+      <div class="text-lg font-semibold text-gray-500 tracking-wider" id="timer">
+        05:00
       </div>
 
       <!-- Mic with AI/You state -->
@@ -64,10 +58,10 @@
 
       <!-- Start/Stop Buttons -->
       <div class="flex gap-4 mt-2">
-        <button class="bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white py-2 px-6 rounded-full shadow hover:shadow-lg transition">
+        <button class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-6 rounded-xl shadow-md transition">
           ▶️ Start
         </button>
-        <button class="bg-gradient-to-r from-[#0F2027] via-[#203A43] to-[#2C5364] text-white py-2 px-6 rounded-full shadow hover:shadow-lg transition">
+        <button class="bg-rose-600 hover:bg-rose-700 text-white py-2 px-6 rounded-xl shadow-md transition">
           ⏹️ Stop
         </button>
       </div>
@@ -92,13 +86,23 @@
         <h2 class="text-lg font-semibold">🧠 Choose Scenario</h2>
         <button onclick="toggleModal()" class="text-gray-500 hover:text-gray-700">✖️</button>
       </div>
-      <select class="w-full p-2 mb-4 rounded-xl text-sm border border-gray-300">
-        <option title="Chest Pain in 55-year-old male">Chest Pain in 55-year-old male</option>
-        <option title="Shortness of Breath - Asthma">Shortness of Breath - Asthma</option>
-        <option title="Dental Trauma - Avulsed Incisor">Dental Trauma - Avulsed Incisor</option>
-        <!-- Add more scenarios -->
-      </select>
-      <button class="bg-gradient-to-r from-blue-500 to-purple-500 text-white w-full py-2 rounded-xl shadow hover:shadow-lg">🎲 Random Scenario</button>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
+          <label class="text-sm text-gray-600 font-medium">Select Specific</label>
+          <select class="w-full p-2 rounded-lg text-sm border border-gray-300">
+            <option title="Chest Pain in 55-year-old male">Chest Pain in 55-year-old male</option>
+            <option title="Shortness of Breath - Asthma">Shortness of Breath - Asthma</option>
+            <option title="Dental Trauma - Avulsed Incisor">Dental Trauma - Avulsed Incisor</option>
+            <!-- Add more scenarios -->
+          </select>
+        </div>
+        <div class="flex flex-col gap-2 justify-end">
+          <label class="text-sm text-gray-600 font-medium">Or Choose Random</label>
+          <button class="bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2 rounded-lg shadow hover:shadow-md w-full">
+            🎲 Random Scenario
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -111,8 +115,6 @@
       const modal = document.getElementById('modal');
       modal.classList.toggle('hidden');
     }
-
-    // Example for changing mic state dynamically (you can hook this into your app logic)
     function setVoiceState(state) {
       const mic = document.getElementById('micRing');
       const label = document.getElementById('voiceState');
