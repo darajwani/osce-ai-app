@@ -161,8 +161,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
-  startTimer(300);
-  sessionEndTime = Date.now() + 5 * 60 * 1000;
+  startTimer(20);
+  sessionEndTime = Date.now() + 20 * 1000;
   isRecording = true;
 
   let hasFirstReplyHappened = false;
@@ -245,12 +245,45 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   myvad.start();
 
-  setTimeout(() => {
-    isRecording = false;
-    myvad.destroy();
-    stream.getTracks().forEach(track => track.stop());
-    showMicRecording(false);
-  }, 5 * 60 * 1000);
+setTimeout(async () => {
+  isRecording = false;
+  myvad.destroy();
+  stream.getTracks().forEach(track => track.stop());
+  showMicRecording(false);
+
+  // Show waiting feedback message
+  const chatContainer = document.getElementById('chat-container');
+  const loadingEl = document.createElement('p');
+  loadingEl.textContent = "📝 Generating feedback, please wait...";
+  loadingEl.style.color = "#666";
+  loadingEl.style.fontStyle = "italic";
+  chatContainer.appendChild(loadingEl);
+
+  try {
+    const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: window.currentSessionId
+      })
+    });
+
+    const data = await res.json();
+    loadingEl.remove();
+
+    const feedbackEl = document.createElement('p');
+    feedbackEl.innerHTML = `<strong>🧠 Feedback:</strong><br>${data.feedback || 'No feedback returned.'}`;
+    feedbackEl.style.backgroundColor = "#e8ffe8";
+    feedbackEl.style.padding = "10px";
+    feedbackEl.style.borderRadius = "8px";
+    chatContainer.appendChild(feedbackEl);
+  } catch (err) {
+    console.error("Feedback fetch error:", err);
+    loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
+    loadingEl.style.color = "red";
+  }
+}, 5 * 60 * 1000);
+
 }
 
 function sendToMake(blob, url, onReply) {
