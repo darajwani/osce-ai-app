@@ -289,6 +289,18 @@ feedbackContainer.innerHTML = `
 `;
 
 document.getElementById('chat-container').appendChild(feedbackContainer);
+    const retryBtn = document.createElement('button');
+retryBtn.textContent = "🔁 Try Another Scenario";
+retryBtn.onclick = () => location.reload();
+retryBtn.style.marginTop = "15px";
+retryBtn.style.padding = "10px 16px";
+retryBtn.style.borderRadius = "8px";
+retryBtn.style.backgroundColor = "#007bff";
+retryBtn.style.color = "#fff";
+retryBtn.style.border = "none";
+retryBtn.style.cursor = "pointer";
+feedbackContainer.appendChild(retryBtn);
+
 
 
     const feedbackEl = document.createElement('p');
