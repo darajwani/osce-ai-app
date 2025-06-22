@@ -193,7 +193,7 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
     }
   }
 
-  startVoiceLoopWithVAD('https://hook.eu2.make.com/gotjtejc6e7anjxxikz5fciwcl1m2nj2', showReply);
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/9n6ssq53b1wrme3c1by54im39gj3ujg9', showReply);
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
