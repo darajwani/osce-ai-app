@@ -282,7 +282,7 @@ setTimeout(async () => {
     loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
     loadingEl.style.color = "red";
   }
-}, 5 * 60 * 1000);
+}, 20 * 1000);
 
 }
 
