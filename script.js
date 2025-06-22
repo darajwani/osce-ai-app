@@ -260,16 +260,36 @@ setTimeout(async () => {
   chatContainer.appendChild(loadingEl);
 
   try {
-    const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: window.currentSessionId
-      })
-    });
+   const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    session_id: window.currentSessionId
+  })
+});
 
-    const data = await res.json();
-    loadingEl.remove();
+const data = await res.json();
+loadingEl.remove();
+
+const feedbackContainer = document.createElement('div');
+feedbackContainer.style.backgroundColor = "#f0faff";
+feedbackContainer.style.padding = "15px";
+feedbackContainer.style.marginTop = "10px";
+feedbackContainer.style.borderRadius = "10px";
+feedbackContainer.style.border = "1px solid #b3e5ff";
+
+feedbackContainer.innerHTML = `
+  <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
+  <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
+  <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
+  <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
+  <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
+  <hr style="margin:12px 0;">
+  <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
+`;
+
+document.getElementById('chat-container').appendChild(feedbackContainer);
+
 
     const feedbackEl = document.createElement('p');
     feedbackEl.innerHTML = `<strong>🧠 Feedback:</strong><br>${data.feedback || 'No feedback returned.'}`;
