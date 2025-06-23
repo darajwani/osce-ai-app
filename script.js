@@ -287,7 +287,18 @@ feedbackContainer.innerHTML = `
   <hr style="margin:12px 0;">
   <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
 `;
+const heading = document.createElement('h2');
+heading.textContent = "📋 Your Feedback Summary";
+heading.style.marginTop = "30px";
+heading.style.marginBottom = "10px";
+heading.style.fontSize = "20px";
+heading.style.color = "#333";
 
+const divider = document.createElement('hr');
+divider.style.margin = "10px 0 20px";
+
+chatContainer.appendChild(heading);
+chatContainer.appendChild(divider);
 document.getElementById('chat-container').appendChild(feedbackContainer);
     feedbackContainer.scrollIntoView({ behavior: "smooth" });
     const retryBtn = document.createElement('button');
