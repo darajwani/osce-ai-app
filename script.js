@@ -254,7 +254,14 @@ setTimeout(async () => {
   // Show waiting feedback message
   const chatContainer = document.getElementById('chat-container');
   const loadingEl = document.createElement('p');
-  loadingEl.textContent = "📝 Generating feedback, please wait...";
+ let dotCount = 0;
+loadingEl.textContent = "📝 Generating feedback, please wait";
+
+const dotInterval = setInterval(() => {
+  dotCount = (dotCount + 1) % 4; // cycle through 0 to 3
+  loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
+}, 500);
+
   loadingEl.style.color = "#666";
   loadingEl.style.fontStyle = "italic";
   chatContainer.appendChild(loadingEl);
