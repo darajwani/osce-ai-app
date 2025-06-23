@@ -167,33 +167,42 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
 
   let hasFirstReplyHappened = false;
 
-  function showReply(replyText, isError = false) {
-    const el = document.createElement('p');
-    el.style.marginTop = "10px";
-    el.style.padding = "8px";
-    el.style.borderRadius = "6px";
-    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
-      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-    const voiceCleaned = replyText
+ function showReply(replyText, isError = false) {
+  const el = document.createElement('p');
+  el.style.marginTop = "10px";
+  el.style.padding = "8px";
+  el.style.borderRadius = "6px";
+  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+
+  let visible = '';
+  let voiceCleaned = '';
+
+  if (isError || !replyText) {
+    visible = "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?";
+  } else {
+    visible = "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+    voiceCleaned = replyText
       .replace(/\[(.*?)\]/g, '')
       .replace(/\(.*?\)/g, '')
       .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
       .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-    el.innerHTML = visible;
-    document.getElementById('chat-container').appendChild(el);
-    if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
-
-    // Trigger scripted argument only after first reply
-    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
-      hasFirstReplyHappened = true;
-      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
-    }
   }
 
-  startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
+  el.innerHTML = visible;
+  document.getElementById('chat-container').appendChild(el);
+  if (!isError && voiceCleaned) queueAndSpeakReply(voiceCleaned);
+
+  if (!isError && !hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
+    hasFirstReplyHappened = true;
+    setTimeout(() => showReplyFromScript(currentScenario.script), 500);
+  }
+}
+
+
+ startVoiceLoopWithVAD('<https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag>', showReply);
+
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
