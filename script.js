@@ -7,6 +7,7 @@ let isRecording = false;
 let lastMediaStream = null;
 let isSpeaking = false;
 let audioQueue = [];
+let isSessionOver = false;
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
@@ -80,6 +81,7 @@ function showReplyFromScript(script) {
 }
 
 function queueAndSpeakReply(text, speakerOverride = null) {
+if (isSessionOver) return;
   audioQueue.push({ text, speaker: speakerOverride });
   if (!isSpeaking) playNextInQueue();
 }
@@ -247,6 +249,9 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
 setTimeout(async () => {
   isRecording = false;
+  isSessionOver = true;
+  audioQueue = [];
+isSpeaking = false;
   myvad.destroy();
   stream.getTracks().forEach(track => track.stop());
   showMicRecording(false);
