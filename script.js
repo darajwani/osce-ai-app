@@ -251,20 +251,21 @@ setTimeout(async () => {
   stream.getTracks().forEach(track => track.stop());
   showMicRecording(false);
 
-  // Show waiting feedback message
-  const chatContainer = document.getElementById('chat-container');
-  const loadingEl = document.createElement('p');
- let dotCount = 0;
-loadingEl.textContent = "📝 Generating feedback, please wait";
+ // Show waiting feedback message
+const chatContainer = document.getElementById('chat-container');
+const loadingEl = document.createElement('p');
 
+loadingEl.style.color = "#666";
+loadingEl.style.fontStyle = "italic";
+loadingEl.textContent = "📝 Generating feedback, please wait";
+chatContainer.appendChild(loadingEl);
+
+let dotCount = 0;
 const dotInterval = setInterval(() => {
   dotCount = (dotCount + 1) % 4; // cycle through 0 to 3
   loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
 }, 500);
 
-  loadingEl.style.color = "#666";
-  loadingEl.style.fontStyle = "italic";
-  chatContainer.appendChild(loadingEl);
 
   try {
    const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
@@ -276,8 +277,9 @@ const dotInterval = setInterval(() => {
 });
 
 const data = await res.json();
-loadingEl.remove();
     clearInterval(dotInterval);
+loadingEl.remove();
+    
 
 
 const feedbackContainer = document.createElement('div');
