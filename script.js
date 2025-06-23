@@ -289,6 +289,7 @@ feedbackContainer.innerHTML = `
 `;
 
 document.getElementById('chat-container').appendChild(feedbackContainer);
+    feedbackContainer.scrollIntoView({ behavior: "smooth" });
     const retryBtn = document.createElement('button');
 retryBtn.textContent = "🔁 Try Another Scenario";
 retryBtn.onclick = () => location.reload();
@@ -303,12 +304,6 @@ feedbackContainer.appendChild(retryBtn);
 
 
 
-    const feedbackEl = document.createElement('p');
-    feedbackEl.innerHTML = `<strong>🧠 Feedback:</strong><br>${data.feedback || 'No feedback returned.'}`;
-    feedbackEl.style.backgroundColor = "#e8ffe8";
-    feedbackEl.style.padding = "10px";
-    feedbackEl.style.borderRadius = "8px";
-    chatContainer.appendChild(feedbackEl);
   } catch (err) {
     console.error("Feedback fetch error:", err);
     loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
