@@ -1,4 +1,4 @@
-// Top-level state
+  // Top-level state
 let isWaitingForReply = false;
 let currentScenario = null;
 let allScenarios = [];
@@ -327,6 +327,8 @@ setTimeout(() => {
     }
   });
 }, 20 * 1000);
+
+}
 
 
 function sendToMake(blob, url, onReply) {
