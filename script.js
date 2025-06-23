@@ -245,95 +245,89 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   myvad.start();
 
-setTimeout(async () => {
+setTimeout(() => {
   isRecording = false;
   myvad.destroy();
   stream.getTracks().forEach(track => track.stop());
   showMicRecording(false);
 
- // Show waiting feedback message
-const chatContainer = document.getElementById('chat-container');
-const loadingEl = document.createElement('p');
+  const chatContainer = document.getElementById('chat-container');
+  const feedbackBtn = document.createElement('button');
+  feedbackBtn.textContent = "🧠 Generate Feedback";
+  feedbackBtn.id = "feedback-button";
+  feedbackBtn.style.marginTop = "20px";
+  feedbackBtn.style.padding = "10px 16px";
+  feedbackBtn.style.borderRadius = "8px";
+  feedbackBtn.style.backgroundColor = "#007bff";
+  feedbackBtn.style.color = "#fff";
+  feedbackBtn.style.border = "none";
+  feedbackBtn.style.cursor = "pointer";
+  chatContainer.appendChild(feedbackBtn);
 
-loadingEl.style.color = "#666";
-loadingEl.style.fontStyle = "italic";
-loadingEl.textContent = "📝 Generating feedback, please wait";
-chatContainer.appendChild(loadingEl);
+  feedbackBtn.addEventListener('click', async function handleFeedbackClick() {
+    // Disable button & show loading
+    feedbackBtn.disabled = true;
+    feedbackBtn.textContent = "📝 Generating feedback, please wait";
+    let dotCount = 0;
+    const dotInterval = setInterval(() => {
+      dotCount = (dotCount + 1) % 4;
+      feedbackBtn.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
+    }, 500);
 
-let dotCount = 0;
-const dotInterval = setInterval(() => {
-  dotCount = (dotCount + 1) % 4; // cycle through 0 to 3
-  loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
-}, 500);
+    try {
+      const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: window.currentSessionId })
+      });
 
+      const data = await res.json();
+      clearInterval(dotInterval);
+      feedbackBtn.disabled = false;
+      feedbackBtn.textContent = "🔁 Try Another Scenario";
+      feedbackBtn.onclick = () => location.reload();
 
-  try {
-   const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    session_id: window.currentSessionId
-  })
-});
+      const feedbackContainer = document.createElement('div');
+      feedbackContainer.style.backgroundColor = "#f0faff";
+      feedbackContainer.style.padding = "15px";
+      feedbackContainer.style.marginTop = "10px";
+      feedbackContainer.style.borderRadius = "10px";
+      feedbackContainer.style.border = "1px solid #b3e5ff";
 
-const data = await res.json();
-    clearInterval(dotInterval);
-loadingEl.remove();
-    
+      feedbackContainer.innerHTML = `
+        <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
+        <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
+        <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
+        <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
+        <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
+        <hr style="margin:12px 0;">
+        <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
+      `;
 
+      const heading = document.createElement('h2');
+      heading.textContent = "📋 Your Feedback Summary";
+      heading.style.marginTop = "30px";
+      heading.style.marginBottom = "10px";
+      heading.style.fontSize = "20px";
+      heading.style.color = "#333";
 
-const feedbackContainer = document.createElement('div');
-feedbackContainer.style.backgroundColor = "#f0faff";
-feedbackContainer.style.padding = "15px";
-feedbackContainer.style.marginTop = "10px";
-feedbackContainer.style.borderRadius = "10px";
-feedbackContainer.style.border = "1px solid #b3e5ff";
+      const divider = document.createElement('hr');
+      divider.style.margin = "10px 0 20px";
 
-feedbackContainer.innerHTML = `
-  <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
-  <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
-  <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
-  <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
-  <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
-  <hr style="margin:12px 0;">
-  <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
-`;
-const heading = document.createElement('h2');
-heading.textContent = "📋 Your Feedback Summary";
-heading.style.marginTop = "30px";
-heading.style.marginBottom = "10px";
-heading.style.fontSize = "20px";
-heading.style.color = "#333";
+      chatContainer.appendChild(heading);
+      chatContainer.appendChild(divider);
+      chatContainer.appendChild(feedbackContainer);
+      feedbackContainer.scrollIntoView({ behavior: "smooth" });
 
-const divider = document.createElement('hr');
-divider.style.margin = "10px 0 20px";
-
-chatContainer.appendChild(heading);
-chatContainer.appendChild(divider);
-document.getElementById('chat-container').appendChild(feedbackContainer);
-    feedbackContainer.scrollIntoView({ behavior: "smooth" });
-    const retryBtn = document.createElement('button');
-retryBtn.textContent = "🔁 Try Another Scenario";
-retryBtn.onclick = () => location.reload();
-retryBtn.style.marginTop = "15px";
-retryBtn.style.padding = "10px 16px";
-retryBtn.style.borderRadius = "8px";
-retryBtn.style.backgroundColor = "#007bff";
-retryBtn.style.color = "#fff";
-retryBtn.style.border = "none";
-retryBtn.style.cursor = "pointer";
-feedbackContainer.appendChild(retryBtn);
-
-
-
-  } catch (err) {
-    console.error("Feedback fetch error:", err);
-    loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
-    loadingEl.style.color = "red";
-  }
+    } catch (err) {
+      clearInterval(dotInterval);
+      feedbackBtn.disabled = false;
+      feedbackBtn.textContent = "⚠️ Failed. Try Again";
+      console.error("Feedback fetch error:", err);
+    }
+  });
 }, 20 * 1000);
 
-}
 
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) return;
