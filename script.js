@@ -277,7 +277,7 @@ const dotInterval = setInterval(() => {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    session_id: window.currentSessionId
+    session_id: window.currentSessionId,
     scenario_id: window.currentScenarioId
   })
 });
