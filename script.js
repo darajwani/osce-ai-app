@@ -278,6 +278,7 @@ const dotInterval = setInterval(() => {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     session_id: window.currentSessionId
+    scenario_id: window.currentScenarioId
   })
 });
 
@@ -348,6 +349,8 @@ function sendToMake(blob, url, onReply) {
   formData.append('file', blob, 'audio.webm');
   if (currentScenario?.id) formData.append('id', currentScenario.id);
   if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
+  formData.append('scenario_id', window.currentScenarioId);
+
 
   fetch(url, { method: 'POST', body: formData })
     .then(async res => {
