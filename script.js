@@ -1,4 +1,4 @@
-  // Top-level state
+// Top-level state
 let isWaitingForReply = false;
 let currentScenario = null;
 let allScenarios = [];
@@ -46,7 +46,7 @@ function populateScenarioDropdown(scenarios) {
   scenarios.forEach(s => {
     const option = document.createElement("option");
     option.value = s.id;
-    option.textContent = `${s.id} - ${s.title}`;
+    option.textContent = ${s.id} - ${s.title};
     dropdown.appendChild(option);
   });
 }
@@ -72,7 +72,7 @@ function showReplyFromScript(script) {
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
     el.style.backgroundColor = "#f2f2f2";
-    el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
+    el.innerHTML = <b>${part.speaker}:</b> ${part.text};
     const container = document.getElementById('chat-container');
     if (container) container.appendChild(el);
     queueAndSpeakReply(part.text, part.speaker);
@@ -122,7 +122,7 @@ function playNextInQueue() {
     .then(res => res.json())
     .then(data => {
       if (!data.audioContent) throw new Error("No audio content returned");
-      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      const audio = new Audio(data:audio/mp3;base64,${data.audioContent});
       audio.play().catch(console.warn);
       audio.onended = () => { isSpeaking = false; playNextInQueue(); };
     })
@@ -167,42 +167,33 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
 
   let hasFirstReplyHappened = false;
 
- function showReply(replyText, isError = false) {
-  const el = document.createElement('p');
-  el.style.marginTop = "10px";
-  el.style.padding = "8px";
-  el.style.borderRadius = "6px";
-  el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-
-  let visible = '';
-  let voiceCleaned = '';
-
-  if (isError || !replyText) {
-    visible = "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?";
-  } else {
-    visible = "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-    voiceCleaned = replyText
+  function showReply(replyText, isError = false) {
+    const el = document.createElement('p');
+    el.style.marginTop = "10px";
+    el.style.padding = "8px";
+    el.style.borderRadius = "6px";
+    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
+      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+    const voiceCleaned = replyText
       .replace(/\[(.*?)\]/g, '')
       .replace(/\(.*?\)/g, '')
       .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
       .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
+    el.innerHTML = visible;
+    document.getElementById('chat-container').appendChild(el);
+    if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
+
+    // Trigger scripted argument only after first reply
+    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
+      hasFirstReplyHappened = true;
+      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
+    }
   }
 
-  el.innerHTML = visible;
-  document.getElementById('chat-container').appendChild(el);
-  if (!isError && voiceCleaned) queueAndSpeakReply(voiceCleaned);
-
-  if (!isError && !hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
-    hasFirstReplyHappened = true;
-    setTimeout(() => showReplyFromScript(currentScenario.script), 500);
-  }
-}
-
-
- startVoiceLoopWithVAD('<https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag>', showReply);
-
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
@@ -213,7 +204,7 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    timerDisplay.textContent = ${minutes}:${seconds < 10 ? "0" : ""}${seconds};
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
@@ -254,91 +245,95 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   myvad.start();
 
-setTimeout(() => {
+setTimeout(async () => {
   isRecording = false;
   myvad.destroy();
   stream.getTracks().forEach(track => track.stop());
   showMicRecording(false);
 
-  const chatContainer = document.getElementById('chat-container');
-  const feedbackBtn = document.createElement('button');
-  feedbackBtn.textContent = "🧠 Generate Feedback";
-  feedbackBtn.id = "feedback-button";
-  feedbackBtn.style.marginTop = "20px";
-  feedbackBtn.style.padding = "10px 16px";
-  feedbackBtn.style.borderRadius = "8px";
-  feedbackBtn.style.backgroundColor = "#007bff";
-  feedbackBtn.style.color = "#fff";
-  feedbackBtn.style.border = "none";
-  feedbackBtn.style.cursor = "pointer";
-  chatContainer.appendChild(feedbackBtn);
+ // Show waiting feedback message
+const chatContainer = document.getElementById('chat-container');
+const loadingEl = document.createElement('p');
 
-  feedbackBtn.addEventListener('click', async function handleFeedbackClick() {
-    // Disable button & show loading
-    feedbackBtn.disabled = true;
-    feedbackBtn.textContent = "📝 Generating feedback, please wait";
-    let dotCount = 0;
-    const dotInterval = setInterval(() => {
-      dotCount = (dotCount + 1) % 4;
-      feedbackBtn.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
-    }, 500);
+loadingEl.style.color = "#666";
+loadingEl.style.fontStyle = "italic";
+loadingEl.textContent = "📝 Generating feedback, please wait";
+chatContainer.appendChild(loadingEl);
 
-    try {
-      const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: window.currentSessionId })
-      });
+let dotCount = 0;
+const dotInterval = setInterval(() => {
+  dotCount = (dotCount + 1) % 4; // cycle through 0 to 3
+  loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
+}, 500);
 
-      const data = await res.json();
-      clearInterval(dotInterval);
-      feedbackBtn.disabled = false;
-      feedbackBtn.textContent = "🔁 Try Another Scenario";
-      feedbackBtn.onclick = () => location.reload();
 
-      const feedbackContainer = document.createElement('div');
-      feedbackContainer.style.backgroundColor = "#f0faff";
-      feedbackContainer.style.padding = "15px";
-      feedbackContainer.style.marginTop = "10px";
-      feedbackContainer.style.borderRadius = "10px";
-      feedbackContainer.style.border = "1px solid #b3e5ff";
+  try {
+   const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    session_id: window.currentSessionId
+  })
+});
 
-      feedbackContainer.innerHTML = `
-        <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
-        <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
-        <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
-        <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
-        <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
-        <hr style="margin:12px 0;">
-        <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
-      `;
+const data = await res.json();
+    clearInterval(dotInterval);
+loadingEl.remove();
+    
 
-      const heading = document.createElement('h2');
-      heading.textContent = "📋 Your Feedback Summary";
-      heading.style.marginTop = "30px";
-      heading.style.marginBottom = "10px";
-      heading.style.fontSize = "20px";
-      heading.style.color = "#333";
 
-      const divider = document.createElement('hr');
-      divider.style.margin = "10px 0 20px";
+const feedbackContainer = document.createElement('div');
+feedbackContainer.style.backgroundColor = "#f0faff";
+feedbackContainer.style.padding = "15px";
+feedbackContainer.style.marginTop = "10px";
+feedbackContainer.style.borderRadius = "10px";
+feedbackContainer.style.border = "1px solid #b3e5ff";
 
-      chatContainer.appendChild(heading);
-      chatContainer.appendChild(divider);
-      chatContainer.appendChild(feedbackContainer);
-      feedbackContainer.scrollIntoView({ behavior: "smooth" });
+feedbackContainer.innerHTML = 
+  <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
+  <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
+  <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
+  <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
+  <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
+  <hr style="margin:12px 0;">
+  <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
+;
+const heading = document.createElement('h2');
+heading.textContent = "📋 Your Feedback Summary";
+heading.style.marginTop = "30px";
+heading.style.marginBottom = "10px";
+heading.style.fontSize = "20px";
+heading.style.color = "#333";
 
-    } catch (err) {
-      clearInterval(dotInterval);
-      feedbackBtn.disabled = false;
-      feedbackBtn.textContent = "⚠️ Failed. Try Again";
-      console.error("Feedback fetch error:", err);
-    }
-  });
+const divider = document.createElement('hr');
+divider.style.margin = "10px 0 20px";
+
+chatContainer.appendChild(heading);
+chatContainer.appendChild(divider);
+document.getElementById('chat-container').appendChild(feedbackContainer);
+    feedbackContainer.scrollIntoView({ behavior: "smooth" });
+    const retryBtn = document.createElement('button');
+retryBtn.textContent = "🔁 Try Another Scenario";
+retryBtn.onclick = () => location.reload();
+retryBtn.style.marginTop = "15px";
+retryBtn.style.padding = "10px 16px";
+retryBtn.style.borderRadius = "8px";
+retryBtn.style.backgroundColor = "#007bff";
+retryBtn.style.color = "#fff";
+retryBtn.style.border = "none";
+retryBtn.style.cursor = "pointer";
+feedbackContainer.appendChild(retryBtn);
+
+
+
+  } catch (err) {
+    console.error("Feedback fetch error:", err);
+    loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
+    loadingEl.style.color = "red";
+  }
 }, 20 * 1000);
 
 }
-
 
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) return;
