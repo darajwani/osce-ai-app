@@ -277,6 +277,8 @@ const dotInterval = setInterval(() => {
 
 const data = await res.json();
 loadingEl.remove();
+    clearInterval(dotInterval);
+
 
 const feedbackContainer = document.createElement('div');
 feedbackContainer.style.backgroundColor = "#f0faff";
