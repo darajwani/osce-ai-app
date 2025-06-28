@@ -91,18 +91,23 @@ function loadScenario(scenario) {
   const guideToggle = document.getElementById("guide-toggle");
   const guideText = document.getElementById("speaking-guide-text");
 
-  if (scenario.speaking_guide) {
+  if (scenario.speaking_guide && guideText && guideToggle) {
     const bulletPoints = scenario.speaking_guide
       .split('\n')
       .filter(line => line.trim() !== '')
       .map(line => `<li>${line}</li>`)
       .join('');
+    
     guideText.innerHTML = `<ul style="margin: 0; padding-left: 20px;">${bulletPoints}</ul>`;
     guideText.style.display = "none";
     guideToggle.checked = false;
+
     guideToggle.onchange = () => {
       guideText.style.display = guideToggle.checked ? "block" : "none";
     };
+  }
+}
+
     guideToggleContainer.style.display = "block";
   } else {
     guideToggleContainer.style.display = "none";
