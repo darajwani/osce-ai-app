@@ -68,7 +68,29 @@ function loadScenario(scenario) {
   document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
   document.getElementById("start-station-btn").style.display = "inline-block";
   document.getElementById("stop-station-btn").style.display = "none";
+
+  const guideToggleContainer = document.getElementById("guide-toggle-container");
+  const guideToggle = document.getElementById("guide-toggle");
+  const guideText = document.getElementById("speaking-guide-text");
+
+  if (scenario.speaking_guide) {
+    const bulletPoints = scenario.speaking_guide
+      .split('\n')
+      .filter(line => line.trim() !== '')
+      .map(line => `<li>${line}</li>`)
+      .join('');
+    guideText.innerHTML = `<ul style="margin: 0; padding-left: 20px;">${bulletPoints}</ul>`;
+    guideText.style.display = "none";
+    guideToggle.checked = false;
+    guideToggle.onchange = () => {
+      guideText.style.display = guideToggle.checked ? "block" : "none";
+    };
+    guideToggleContainer.style.display = "block";
+  } else {
+    guideToggleContainer.style.display = "none";
+  }
 }
+
 function parseMultiActorScript(script) {
   const parts = script.split(/\[(.*?)\]/).filter(Boolean);
   const sequence = [];
