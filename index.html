@@ -73,9 +73,6 @@
       padding: 24px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
-    <button id="toggle-speaking-guide" style="margin-top: 10px; display: none;">🗣 Show Speaking Guide</button>
-<div id="speaking-guide" style="display: none; margin-top: 10px; padding: 10px; background-color: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;"></div>
-
     #chat-container {
       display: none;
       margin-top: 20px;
@@ -119,23 +116,22 @@
 
   <div id="mic-icon" class="mic-idle" title="Microphone"></div>
 
- <div id="scenario-box">
-  <h2 id="scenario-title"></h2>
-  <p id="scenario-text"></p>
+  <div id="scenario-box">
+    <h2 id="scenario-title"></h2>
+    <p id="scenario-text"></p>
 
-  <!-- 🔽 ADD THIS BLOCK -->
-  <div id="guide-toggle-container" style="margin-top: 10px; display: none;">
-    <label>
-      <input type="checkbox" id="guide-toggle"> Show Speaking Guide
-    </label>
-    <p id="speaking-guide-text" style="display: none; margin-top: 5px; background: #fff8dc; padding: 10px; border-radius: 6px; border: 1px solid #f0d000;"></p>
+    <!-- 🔽 Speaking Guide Section -->
+    <div id="guide-toggle-container" style="margin-top: 10px; display: none;">
+      <label>
+        <input type="checkbox" id="guide-toggle"> Show Speaking Guide
+      </label>
+      <p id="speaking-guide-text" style="display: none; margin-top: 5px; background: #fff8dc; padding: 10px; border-radius: 6px; border: 1px solid #f0d000;"></p>
+    </div>
+    <!-- 🔼 End Speaking Guide -->
+
+    <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
+    <div id="chat-container"><b>AI Patient Replies:</b><br></div>
   </div>
-  <!-- 🔼 END OF GUIDE BLOCK -->
-
-  <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
-  <div id="chat-container"><b>AI Patient Replies:</b><br></div>
-</div>
-
 
   <!-- ONNX Runtime -->
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
@@ -143,5 +139,19 @@
   <script src="./vad/bundle.min.js"></script>
   <!-- Main Logic -->
   <script src="script.js"></script>
+
+  <script>
+    // Speaking Guide Toggle
+    window.addEventListener("DOMContentLoaded", () => {
+      const guideCheckbox = document.getElementById("guide-toggle");
+      const guideText = document.getElementById("speaking-guide-text");
+
+      if (guideCheckbox && guideText) {
+        guideCheckbox.addEventListener("change", () => {
+          guideText.style.display = guideCheckbox.checked ? "block" : "none";
+        });
+      }
+    });
+  </script>
 </body>
 </html>
