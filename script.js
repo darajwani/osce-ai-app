@@ -91,7 +91,7 @@ function loadScenario(scenario) {
   const guideToggle = document.getElementById("guide-toggle");
   const guideText = document.getElementById("speaking-guide-text");
 
-  if (scenario.speaking_guide && guideText && guideToggle && guideToggleContainer) {
+   if (scenario.speaking_guide && guideText && guideToggle && guideToggleContainer) {
     const bulletPoints = scenario.speaking_guide
       .split('\n')
       .filter(line => line.trim() !== '')
@@ -108,13 +108,6 @@ function loadScenario(scenario) {
 
     guideToggleContainer.style.display = "block";
   } else if (guideToggleContainer) {
-    guideToggleContainer.style.display = "none";
-  }
-}
-
-
-    guideToggleContainer.style.display = "block";
-  } else {
     guideToggleContainer.style.display = "none";
   }
 }
