@@ -31,7 +31,12 @@ function getScenarios(callback) {
           script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
           styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
           pitch: parseFloat(cols[11]) || 0, name: cols[12] || '',
-          speaking_guide: (cols[13] || '').replace(/^\[?"?/, '').replace(/"?\]?$/, '')
+          speaking_guide: (cols[13] || '')
+            .replace(/^\[|\]$/g, '')
+            .split(/","?/g)
+            .map(s => s.replace(/^"|"$/g, '').trim())
+            .filter(Boolean)
+            .join('\n')
         };
       }).filter(s => s.id && s.title);
       allScenarios = scenarios;
@@ -165,7 +170,12 @@ function loadScenario(scenario) {
   const guideText = document.getElementById("speaking-guide-text");
 
   if (scenario.speaking_guide) {
-    guideText.textContent = scenario.speaking_guide;
+    const bulletPoints = scenario.speaking_guide
+      .split('\n')
+      .filter(line => line.trim() !== '')
+      .map(line => `<li>${line}</li>`)
+      .join('');
+    guideText.innerHTML = `<ul style="margin: 0; padding-left: 20px;">${bulletPoints}</ul>`;
     guideText.style.display = "none";
     guideToggle.checked = false;
     guideToggle.onchange = () => {
@@ -177,41 +187,6 @@ function loadScenario(scenario) {
   }
 }
 
-document.getElementById("start-station-btn").addEventListener("click", () => {
-  document.getElementById("start-station-btn").style.display = "none";
-  document.getElementById("stop-station-btn").style.display = "inline-block";
-  document.getElementById("chat-container").style.display = "block";
-  startTimer(20);
-  sessionEndTime = Date.now() + 20 * 1000;
-  isRecording = true;
-
-  let hasFirstReplyHappened = false;
-
-  function showReply(replyText, isError = false) {
-    const el = document.createElement('p');
-    el.style.marginTop = "10px";
-    el.style.padding = "8px";
-    el.style.borderRadius = "6px";
-    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
-      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-    const voiceCleaned = replyText
-      .replace(/\[(.*?)\]/g, '')
-      .replace(/\(.*?\)/g, '')
-      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
-      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    el.innerHTML = visible;
-    document.getElementById('chat-container').appendChild(el);
-    if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
-
-    // Trigger scripted argument only after first reply
-    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
-      hasFirstReplyHappened = true;
-      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
-    }
-  }
 
   startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
 });
