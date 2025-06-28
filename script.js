@@ -30,7 +30,7 @@ function getScenarios(callback) {
           category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
           script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
           styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
-          pitch: parseFloat(cols[11]) || 0, name: cols[12] || ''
+          pitch: parseFloat(cols[11]) || 0, name: cols[12] || '', speakingGuide: cols[14] || ''
         };
       }).filter(s => s.id && s.title);
       allScenarios = scenarios;
@@ -154,6 +154,18 @@ function loadScenario(scenario) {
   document.getElementById("scenario-title").textContent = scenario.title;
   document.getElementById("scenario-text").textContent = scenario.prompt_text;
   document.getElementById("scenario-box").style.display = "block";
+  const guideBtn = document.getElementById("toggle-speaking-guide");
+const guideDiv = document.getElementById("speaking-guide");
+
+if (scenario.speakingGuide) {
+  guideBtn.style.display = "inline-block";
+  guideDiv.textContent = scenario.speakingGuide;
+  guideDiv.style.display = "none";
+  guideBtn.textContent = "🗣 Show Speaking Guide";
+} else {
+  guideBtn.style.display = "none";
+  guideDiv.style.display = "none";
+}
   document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
   document.getElementById("start-station-btn").style.display = "inline-block";
   document.getElementById("stop-station-btn").style.display = "none";
@@ -375,3 +387,11 @@ function sendToMake(blob, url, onReply) {
 }
 
 window.addEventListener("DOMContentLoaded", () => getScenarios());
+document.getElementById("toggle-speaking-guide").addEventListener("click", () => {
+  const guideDiv = document.getElementById("speaking-guide");
+  const btn = document.getElementById("toggle-speaking-guide");
+  const isVisible = guideDiv.style.display === "block";
+  guideDiv.style.display = isVisible ? "none" : "block";
+  btn.textContent = isVisible ? "🗣 Show Speaking Guide" : "🔽 Hide Speaking Guide";
+});
+
