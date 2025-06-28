@@ -1,4 +1,4 @@
-<script>
+
 // Top-level state
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -262,4 +262,4 @@ window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
   triggerFeedbackSummary();
 });
-</script>
+
