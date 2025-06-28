@@ -116,12 +116,23 @@
 
   <div id="mic-icon" class="mic-idle" title="Microphone"></div>
 
-  <div id="scenario-box">
-    <h2 id="scenario-title"></h2>
-    <p id="scenario-text"></p>
-    <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
-    <div id="chat-container"><b>AI Patient Replies:</b><br></div>
+ <div id="scenario-box">
+  <h2 id="scenario-title"></h2>
+  <p id="scenario-text"></p>
+
+  <!-- 🔽 ADD THIS BLOCK -->
+  <div id="guide-toggle-container" style="margin-top: 10px; display: none;">
+    <label>
+      <input type="checkbox" id="guide-toggle"> Show Speaking Guide
+    </label>
+    <p id="speaking-guide-text" style="display: none; margin-top: 5px; background: #fff8dc; padding: 10px; border-radius: 6px; border: 1px solid #f0d000;"></p>
   </div>
+  <!-- 🔼 END OF GUIDE BLOCK -->
+
+  <p><strong>Timer:</strong> <span id="timer">5:00</span></p>
+  <div id="chat-container"><b>AI Patient Replies:</b><br></div>
+</div>
+
 
   <!-- ONNX Runtime -->
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
