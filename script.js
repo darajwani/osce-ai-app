@@ -23,15 +23,31 @@ function getScenarios(callback) {
     .then(res => res.text())
     .then(csv => {
       const rows = csv.split("\n").slice(1);
-      const scenarios = rows.map(row => {
+      const scenarios = rows.map((row, idx) => {
         const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
+
+        // Debug: log if a row is shorter than expected
+        if (cols.length < 15) {
+          console.warn(`⚠️ Row ${idx + 2} has only ${cols.length} columns:`, cols);
+        }
+
         return {
-          id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
-          category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
-          script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
-          styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
-          pitch: parseFloat(cols[11]) || 0, name: cols[12] || '',
-          speaking_guide: (cols[13] || '')
+          id: cols[0] || '',
+          title: cols[1] || '',
+          prompt_text: cols[2] || '',
+          category: cols[3] || '',
+          instructions: cols[4] || '',
+          emotion: cols[5] || '',
+          script: cols[6] || '',
+          gender: cols[7] || 'FEMALE',
+          languageCode: cols[8] || 'en-GB',
+          styleTag: cols[9] || 'neutral',
+          speakingRate: parseFloat(cols[10]) || 1,
+          pitch: parseFloat(cols[11]) || 0,
+          name: cols[12] || '',
+
+          // ✅ Correctly fetch column O (index 14)
+          speaking_guide: (cols[14] || '')
             .replace(/^\[|\]$/g, '')
             .split(/","?/g)
             .map(s => s.replace(/^"|"$/g, '').trim())
@@ -39,12 +55,14 @@ function getScenarios(callback) {
             .join('\n')
         };
       }).filter(s => s.id && s.title);
+
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
       if (callback) callback(scenarios);
     })
     .catch(err => console.error("Failed to fetch scenarios:", err));
 }
+
 
 function populateScenarioDropdown(scenarios) {
   const dropdown = document.getElementById("scenario-dropdown");
