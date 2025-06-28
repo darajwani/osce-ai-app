@@ -1,4 +1,3 @@
-
 // Top-level state
 let isWaitingForReply = false;
 let currentScenario = null;
@@ -59,6 +58,17 @@ function populateScenarioDropdown(scenarios) {
   });
 }
 
+function loadScenario(scenario) {
+  currentScenario = scenario;
+  isRecording = false;
+  showMicRecording(false);
+  document.getElementById("scenario-title").textContent = scenario.title;
+  document.getElementById("scenario-text").textContent = scenario.prompt_text;
+  document.getElementById("scenario-box").style.display = "block";
+  document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
+  document.getElementById("start-station-btn").style.display = "inline-block";
+  document.getElementById("stop-station-btn").style.display = "none";
+}
 function parseMultiActorScript(script) {
   const parts = script.split(/\[(.*?)\]/).filter(Boolean);
   const sequence = [];
@@ -94,11 +104,7 @@ function queueAndSpeakReply(text, speakerOverride = null) {
 }
 
 function playNextInQueue() {
-  if (audioQueue.length === 0) {
-    isSpeaking = false;
-    return;
-  }
-
+  if (audioQueue.length === 0) return void (isSpeaking = false);
   const { text, speaker } = audioQueue.shift();
   isSpeaking = true;
 
@@ -155,25 +161,127 @@ function playNextInQueue() {
     });
 }
 
-function triggerFeedbackSummary() {
-  const loadingEl = document.createElement('div');
-  loadingEl.id = 'feedback-loader';
-  loadingEl.textContent = "⏳ Loading feedback...";
-  const chatContainer = document.getElementById('chat-container');
-  chatContainer.appendChild(loadingEl);
+function sendToMake(blob, url, onReply) {
+  if (isWaitingForReply) return;
+  isWaitingForReply = true;
+  const formData = new FormData();
+  formData.append('file', blob, 'audio.webm');
+  if (currentScenario?.id) formData.append('id', currentScenario.id);
+  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
+  formData.append('scenario_id', currentScenario?.id);
+
+  fetch(url, { method: 'POST', body: formData })
+    .then(async res => {
+      const raw = await res.text();
+      try {
+        const json = JSON.parse(raw);
+        const decoded = atob(json.reply);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+        onReply(cleanedReply);
+      } catch (e) {
+        console.error("Failed to decode:", e);
+        onReply(null, true);
+      }
+      isWaitingForReply = false;
+    })
+    .catch(err => {
+      console.error("Fetch error:", err);
+      onReply(null, true);
+      isWaitingForReply = false;
+    });
+}
+
+function startTimer(duration) {
+  let timer = duration;
+  const timerDisplay = document.getElementById("timer");
+  const interval = setInterval(() => {
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    if (--timer < 0) {
+      clearInterval(interval);
+      alert("OSCE session complete!");
+      isRecording = false;
+      showMicRecording(false);
+      if (lastMediaStream) lastMediaStream.getTracks().forEach(t => t.stop());
+    }
+  }, 1000);
+}
+
+async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  lastMediaStream = stream;
+  let recorder = null;
+  let chunks = [];
+
+  const myvad = await vad.MicVAD.new({
+    onSpeechStart: () => {
+      showMicRecording(true);
+      chunks = [];
+      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        sendToMake(blob, makeWebhookUrl, (reply, error) => {
+          if (reply) onReply(reply);
+          else onReply(null, true);
+        });
+      };
+      recorder.start();
+    },
+    onSpeechEnd: () => {
+      showMicRecording(false);
+      if (recorder?.state === 'recording') recorder.stop();
+    },
+    modelURL: "./vad/silero_vad.onnx"
+  });
+
+  myvad.start();
 
   setTimeout(async () => {
+    isRecording = false;
+    isSessionOver = true;
+    audioQueue = [];
+    isSpeaking = false;
     try {
-      const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: window.currentSessionId,
-          scenario_id: currentScenario?.id
-        })
-      });
+  myvad.destroy();
+} catch (e) {
+  console.warn("VAD cleanup failed:", e);
+}
+    stream.getTracks().forEach(track => track.stop());
+    showMicRecording(false);
+    triggerFeedbackSummary();
+  }, 20 * 1000);
+}
 
-      const data = await res.json();
+function triggerFeedbackSummary() {
+  const chatContainer = document.getElementById('chat-container');
+  if (!chatContainer) return;
+
+  const loadingEl = document.createElement('p');
+  loadingEl.style.color = "#666";
+  loadingEl.style.fontStyle = "italic";
+  loadingEl.textContent = "📝 Generating feedback, please wait";
+  chatContainer.appendChild(loadingEl);
+
+  let dotCount = 0;
+  const dotInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
+  }, 500);
+
+  fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: window.currentSessionId,
+      scenario_id: currentScenario?.id
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      clearInterval(dotInterval);
       loadingEl.remove();
 
       const feedbackContainer = document.createElement('div');
@@ -219,47 +327,64 @@ function triggerFeedbackSummary() {
       retryBtn.style.border = "none";
       retryBtn.style.cursor = "pointer";
       feedbackContainer.appendChild(retryBtn);
-    } catch (err) {
-      console.error("Feedback fetch error:", err);
-      loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
-      loadingEl.style.color = "red";
-    }
-  }, 20000);
-}
-
-function sendToMake(blob, url, onReply) {
-  if (isWaitingForReply) return;
-  isWaitingForReply = true;
-  const formData = new FormData();
-  formData.append('file', blob, 'audio.webm');
-  if (currentScenario?.id) formData.append('id', currentScenario.id);
-  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
-  formData.append('scenario_id', currentScenario?.id);
-
-  fetch(url, { method: 'POST', body: formData })
-    .then(async res => {
-      const raw = await res.text();
-      try {
-        const json = JSON.parse(raw);
-        const decoded = atob(json.reply);
-        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-        onReply(cleanedReply);
-      } catch (e) {
-        console.error("Failed to decode:", e);
-        onReply(null, true);
-      }
-      isWaitingForReply = false;
     })
     .catch(err => {
-      console.error("Fetch error:", err);
-      onReply(null, true);
-      isWaitingForReply = false;
+      clearInterval(dotInterval);
+      loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
+      loadingEl.style.color = "red";
+      console.error("Feedback fetch error:", err);
     });
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  getScenarios();
-  triggerFeedbackSummary();
+// Event bindings
+document.getElementById("start-random-btn").addEventListener("click", () => {
+  if (allScenarios.length === 0) return;
+  const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
+  loadScenario(randomScenario);
 });
 
+document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
+  const selectedId = e.target.value;
+  const selectedScenario = allScenarios.find(s => s.id === selectedId);
+  if (selectedScenario) loadScenario(selectedScenario);
+});
+
+document.getElementById("start-station-btn").addEventListener("click", () => {
+  document.getElementById("start-station-btn").style.display = "none";
+  document.getElementById("stop-station-btn").style.display = "inline-block";
+  document.getElementById("chat-container").style.display = "block";
+  startTimer(20);
+  isRecording = true;
+  let hasFirstReplyHappened = false;
+
+  function showReply(replyText, isError = false) {
+    const el = document.createElement('p');
+    el.style.marginTop = "10px";
+    el.style.padding = "8px";
+    el.style.borderRadius = "6px";
+    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
+      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+    const voiceCleaned = replyText
+      .replace(/\[(.*?)\]/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
+      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    el.innerHTML = visible;
+    document.getElementById('chat-container').appendChild(el);
+    if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
+
+    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
+      hasFirstReplyHappened = true;
+      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
+    }
+  }
+
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
+});
+
+document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
+
+window.addEventListener("DOMContentLoaded", () => getScenarios());
