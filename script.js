@@ -26,13 +26,13 @@ function getScenarios(callback) {
       const scenarios = rows.map(row => {
         const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
-  id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
-  category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
-  script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
-  styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
-  pitch: parseFloat(cols[11]) || 0, name: cols[12] || '', speaking_guide: cols[13] || ''
-};
-
+          id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
+          category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
+          script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
+          styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
+          pitch: parseFloat(cols[11]) || 0, name: cols[12] || '',
+          speaking_guide: (cols[13] || '').replace(/^\[?"?/, '').replace(/"?\]?$/, '')
+        };
       }).filter(s => s.id && s.title);
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
