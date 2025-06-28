@@ -47,7 +47,7 @@ function populateScenarioDropdown(scenarios) {
   scenarios.forEach(s => {
     const option = document.createElement("option");
     option.value = s.id;
-   option.textContent = ${s.id} - ${s.title};
+   option.textContent = `${s.id} - ${s.title}`;
     dropdown.appendChild(option);
   });
 }
@@ -73,7 +73,7 @@ function showReplyFromScript(script) {
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
     el.style.backgroundColor = "#f2f2f2";
-   el.innerHTML = <b>${part.speaker}:</b> ${part.text};
+   el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
     const container = document.getElementById('chat-container');
     if (container) container.appendChild(el);
     queueAndSpeakReply(part.text, part.speaker);
@@ -124,7 +124,7 @@ function playNextInQueue() {
     .then(res => res.json())
     .then(data => {
       if (!data.audioContent) throw new Error("No audio content returned");
-      const audio = new Audio(data:audio/mp3;base64,${data.audioContent});
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.play().catch(console.warn);
       audio.onended = () => { isSpeaking = false; playNextInQueue(); };
     })
@@ -206,7 +206,7 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-  timerDisplay.textContent = ${minutes}:${seconds < 10 ? "0" : ""}${seconds};
+  timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
@@ -295,7 +295,7 @@ feedbackContainer.style.marginTop = "10px";
 feedbackContainer.style.borderRadius = "10px";
 feedbackContainer.style.border = "1px solid #b3e5ff";
 
-feedbackContainer.innerHTML = 
+feedbackContainer.innerHTML = `
   <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
   <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
   <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
@@ -303,7 +303,7 @@ feedbackContainer.innerHTML =
   <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
   <hr style="margin:12px 0;">
   <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
-;
+`;
 
 const heading = document.createElement('h2');
 heading.textContent = "📋 Your Feedback Summary";
