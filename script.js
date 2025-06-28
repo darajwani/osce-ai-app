@@ -26,12 +26,13 @@ function getScenarios(callback) {
       const scenarios = rows.map(row => {
         const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
         return {
-          id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
-          category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
-          script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
-          styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
-          pitch: parseFloat(cols[11]) || 0, name: cols[12] || ''
-        };
+  id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
+  category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
+  script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
+  styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
+  pitch: parseFloat(cols[11]) || 0, name: cols[12] || '', speaking_guide: cols[13] || ''
+};
+
       }).filter(s => s.id && s.title);
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
@@ -157,6 +158,23 @@ function loadScenario(scenario) {
   document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
   document.getElementById("start-station-btn").style.display = "inline-block";
   document.getElementById("stop-station-btn").style.display = "none";
+
+  // ✅ Show speaking guide toggle if present
+  const guideToggleContainer = document.getElementById("guide-toggle-container");
+  const guideToggle = document.getElementById("guide-toggle");
+  const guideText = document.getElementById("speaking-guide-text");
+
+  if (scenario.speaking_guide) {
+    guideText.textContent = scenario.speaking_guide;
+    guideText.style.display = "none";
+    guideToggle.checked = false;
+    guideToggle.onchange = () => {
+      guideText.style.display = guideToggle.checked ? "block" : "none";
+    };
+    guideToggleContainer.style.display = "block";
+  } else {
+    guideToggleContainer.style.display = "none";
+  }
 }
 
 document.getElementById("start-station-btn").addEventListener("click", () => {
