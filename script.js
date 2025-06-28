@@ -154,17 +154,20 @@ function loadScenario(scenario) {
   document.getElementById("scenario-title").textContent = scenario.title;
   document.getElementById("scenario-text").textContent = scenario.prompt_text;
   document.getElementById("scenario-box").style.display = "block";
-  const guideBtn = document.getElementById("toggle-speaking-guide");
-const guideDiv = document.getElementById("speaking-guide");
+  const guideContainer = document.getElementById("guide-toggle-container");
+const guideCheckbox = document.getElementById("guide-toggle");
+const guideText = document.getElementById("speaking-guide-text");
 
-if (scenario.speakingGuide) {
-  guideBtn.style.display = "inline-block";
-  guideDiv.textContent = scenario.speakingGuide;
-  guideDiv.style.display = "none";
-  guideBtn.textContent = "🗣 Show Speaking Guide";
-} else {
-  guideBtn.style.display = "none";
-  guideDiv.style.display = "none";
+if (guideContainer && guideCheckbox && guideText) {
+  if (scenario.speakingGuide) {
+    guideContainer.style.display = "block";
+    guideText.textContent = scenario.speakingGuide;
+    guideText.style.display = "none";
+    guideCheckbox.checked = false;
+  } else {
+    guideContainer.style.display = "none";
+    guideText.style.display = "none";
+  }
 }
   document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
   document.getElementById("start-station-btn").style.display = "inline-block";
@@ -389,15 +392,15 @@ function sendToMake(blob, url, onReply) {
 window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
 
-  // Safe to access DOM elements now
-  const toggleBtn = document.getElementById("toggle-speaking-guide");
-  if (toggleBtn) {
-    toggleBtn.addEventListener("click", () => {
-      const guideDiv = document.getElementById("speaking-guide");
-      const isVisible = guideDiv.style.display === "block";
-      guideDiv.style.display = isVisible ? "none" : "block";
-      toggleBtn.textContent = isVisible ? "🗣 Show Speaking Guide" : "🔽 Hide Speaking Guide";
+  // Checkbox toggle for speaking guide
+  const guideCheckbox = document.getElementById("guide-toggle");
+  const guideText = document.getElementById("speaking-guide-text");
+
+  if (guideCheckbox && guideText) {
+    guideCheckbox.addEventListener("change", () => {
+      guideText.style.display = guideCheckbox.checked ? "block" : "none";
     });
   }
 });
+
 
