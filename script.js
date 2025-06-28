@@ -386,12 +386,18 @@ function sendToMake(blob, url, onReply) {
     });
 }
 
-window.addEventListener("DOMContentLoaded", () => getScenarios());
-document.getElementById("toggle-speaking-guide").addEventListener("click", () => {
-  const guideDiv = document.getElementById("speaking-guide");
-  const btn = document.getElementById("toggle-speaking-guide");
-  const isVisible = guideDiv.style.display === "block";
-  guideDiv.style.display = isVisible ? "none" : "block";
-  btn.textContent = isVisible ? "🗣 Show Speaking Guide" : "🔽 Hide Speaking Guide";
+window.addEventListener("DOMContentLoaded", () => {
+  getScenarios();
+
+  // Safe to access DOM elements now
+  const toggleBtn = document.getElementById("toggle-speaking-guide");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const guideDiv = document.getElementById("speaking-guide");
+      const isVisible = guideDiv.style.display === "block";
+      guideDiv.style.display = isVisible ? "none" : "block";
+      toggleBtn.textContent = isVisible ? "🗣 Show Speaking Guide" : "🔽 Hide Speaking Guide";
+    });
+  }
 });
 
