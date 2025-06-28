@@ -22,23 +22,30 @@ function getScenarios(callback) {
   fetch(csvUrl)
     .then(res => res.text())
     .then(csv => {
-      const rows = csv.split("\n").slice(1);
-      const scenarios = rows.map(row => {
-        const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
-        return {
-          id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
-          category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
-          script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
-          styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
-          pitch: parseFloat(cols[11]) || 0, name: cols[12] || '', speakingGuide: cols[14] || ''
-        };
-      }).filter(s => s.id && s.title);
+      const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+      const scenarios = parsed.data.map(row => ({
+        id: row["ID"] || '',
+        title: row["Title"] || '',
+        prompt_text: row["Prompt_text"] || '',
+        category: row["Category"] || '',
+        instructions: row["Instructions"] || '',
+        emotion: row["Emotion"] || '',
+        script: row["Script"] || '',
+        gender: row["gender"] || 'FEMALE',
+        languageCode: row["LanguageCode"] || 'en-GB',
+        styleTag: row["VoiceStyleTag"] || 'neutral',
+        speakingRate: parseFloat(row["SpeakingRate"] || 1),
+        pitch: parseFloat(row["VoicePitch"] || 0),
+        name: row["PatientName"] || '',
+        speakingGuide: row["Speaking_Guide"] || '' // ✅ Column O, now parsed correctly
+      })).filter(s => s.id && s.title);
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
       if (callback) callback(scenarios);
     })
     .catch(err => console.error("Failed to fetch scenarios:", err));
 }
+
 
 function populateScenarioDropdown(scenarios) {
   const dropdown = document.getElementById("scenario-dropdown");
