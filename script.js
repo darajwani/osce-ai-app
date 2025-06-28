@@ -23,46 +23,22 @@ function getScenarios(callback) {
     .then(res => res.text())
     .then(csv => {
       const rows = csv.split("\n").slice(1);
-      const scenarios = rows.map((row, idx) => {
+      const scenarios = rows.map(row => {
         const cols = row.match(/(".*?"|[^",]+)(?=,|$)/g)?.map(x => x.replace(/^"|"$/g, '').trim()) || [];
-
-        // Debug: log if a row is shorter than expected
-        if (cols.length < 15) {
-          console.warn(`⚠️ Row ${idx + 2} has only ${cols.length} columns:`, cols);
-        }
-
         return {
-          id: cols[0] || '',
-          title: cols[1] || '',
-          prompt_text: cols[2] || '',
-          category: cols[3] || '',
-          instructions: cols[4] || '',
-          emotion: cols[5] || '',
-          script: cols[6] || '',
-          gender: cols[7] || 'FEMALE',
-          languageCode: cols[8] || 'en-GB',
-          styleTag: cols[9] || 'neutral',
-          speakingRate: parseFloat(cols[10]) || 1,
-          pitch: parseFloat(cols[11]) || 0,
-          name: cols[12] || '',
-
-          // ✅ Correctly fetch column O (index 14)
-          speaking_guide: (cols[14] || '')
-            .replace(/^\[|\]$/g, '')
-            .split(/","?/g)
-            .map(s => s.replace(/^"|"$/g, '').trim())
-            .filter(Boolean)
-            .join('\n')
+          id: cols[0] || '', title: cols[1] || '', prompt_text: cols[2] || '',
+          category: cols[3] || '', instructions: cols[4] || '', emotion: cols[5] || '',
+          script: cols[6] || '', gender: cols[7] || 'FEMALE', languageCode: cols[8] || 'en-GB',
+          styleTag: cols[9] || 'neutral', speakingRate: parseFloat(cols[10]) || 1,
+          pitch: parseFloat(cols[11]) || 0, name: cols[12] || ''
         };
       }).filter(s => s.id && s.title);
-
       allScenarios = scenarios;
       populateScenarioDropdown(scenarios);
       if (callback) callback(scenarios);
     })
     .catch(err => console.error("Failed to fetch scenarios:", err));
 }
-
 
 function populateScenarioDropdown(scenarios) {
   const dropdown = document.getElementById("scenario-dropdown");
@@ -71,45 +47,9 @@ function populateScenarioDropdown(scenarios) {
   scenarios.forEach(s => {
     const option = document.createElement("option");
     option.value = s.id;
-    option.textContent = `${s.id} - ${s.title}`;
+   option.textContent = ${s.id} - ${s.title};
     dropdown.appendChild(option);
   });
-}
-
-function loadScenario(scenario) {
-  currentScenario = scenario;
-  isRecording = false;
-  showMicRecording(false);
-  document.getElementById("scenario-title").textContent = scenario.title;
-  document.getElementById("scenario-text").textContent = scenario.prompt_text;
-  document.getElementById("scenario-box").style.display = "block";
-  document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
-  document.getElementById("start-station-btn").style.display = "inline-block";
-  document.getElementById("stop-station-btn").style.display = "none";
-
-  const guideToggleContainer = document.getElementById("guide-toggle-container");
-  const guideToggle = document.getElementById("guide-toggle");
-  const guideText = document.getElementById("speaking-guide-text");
-
-   if (scenario.speaking_guide && guideText && guideToggle && guideToggleContainer) {
-    const bulletPoints = scenario.speaking_guide
-      .split('\n')
-      .filter(line => line.trim() !== '')
-      .map(line => `<li>${line}</li>`)
-      .join('');
-
-    guideText.innerHTML = `<ul style="margin: 0; padding-left: 20px;">${bulletPoints}</ul>`;
-    guideText.style.display = "none";
-    guideToggle.checked = false;
-
-    guideToggle.onchange = () => {
-      guideText.style.display = guideToggle.checked ? "block" : "none";
-    };
-
-    guideToggleContainer.style.display = "block";
-  } else if (guideToggleContainer) {
-    guideToggleContainer.style.display = "none";
-  }
 }
 
 function parseMultiActorScript(script) {
@@ -133,7 +73,7 @@ function showReplyFromScript(script) {
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
     el.style.backgroundColor = "#f2f2f2";
-    el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
+   el.innerHTML = <b>${part.speaker}:</b> ${part.text};
     const container = document.getElementById('chat-container');
     if (container) container.appendChild(el);
     queueAndSpeakReply(part.text, part.speaker);
@@ -141,7 +81,7 @@ function showReplyFromScript(script) {
 }
 
 function queueAndSpeakReply(text, speakerOverride = null) {
-  if (isSessionOver) return;
+if (isSessionOver) return;
   audioQueue.push({ text, speaker: speakerOverride });
   if (!isSpeaking) playNextInQueue();
 }
@@ -151,35 +91,29 @@ function playNextInQueue() {
   const { text, speaker } = audioQueue.shift();
   isSpeaking = true;
 
-  let voiceConfig = null;
+  let voiceConfig;
 
   if (currentScenario?.id === "64") {
     if (speaker === "MOTHER") {
-      voiceConfig = { gender: "FEMALE", languageCode: "en-GB", pitch: -6, speakingRate: 0.8 };
+      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: -6, speakingRate: 0.8 };
     } else if (speaker === "CHILD") {
-      voiceConfig = { gender: "FEMALE", languageCode: "en-GB", pitch: 6, speakingRate: 1.2 };
-    }
-  }
-
-  if (!voiceConfig && speaker) {
-    const matched = allScenarios.find(s => s.name?.toUpperCase() === speaker.toUpperCase());
-    if (matched) {
-      voiceConfig = {
-        gender: matched.gender || "FEMALE",
-        languageCode: matched.languageCode || "en-GB",
-        pitch: parseFloat(matched.pitch) || 0,
-        speakingRate: parseFloat(matched.speakingRate) || 1
-      };
+      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: 6, speakingRate: 1.2 };
     }
   }
 
   if (!voiceConfig) {
-    voiceConfig = {
-      gender: currentScenario?.gender || "FEMALE",
-      languageCode: currentScenario?.languageCode || "en-GB",
-      pitch: parseFloat(currentScenario?.pitch) || 0,
-      speakingRate: parseFloat(currentScenario?.speakingRate) || 1
-    };
+    const matchByName = allScenarios.find(s => s.name?.toUpperCase() === speaker?.toUpperCase());
+    if (matchByName) {
+      voiceConfig = {
+        gender: matchByName.gender || 'FEMALE', languageCode: matchByName.languageCode || 'en-GB',
+        pitch: parseFloat(matchByName.pitch || 0), speakingRate: parseFloat(matchByName.speakingRate || 1)
+      };
+    } else {
+      voiceConfig = {
+        gender: currentScenario?.gender || 'FEMALE', languageCode: currentScenario?.languageCode || 'en-GB',
+        pitch: parseFloat(currentScenario?.pitch || 0), speakingRate: parseFloat(currentScenario?.speakingRate || 1)
+      };
+    }
   }
 
   fetch('/.netlify/functions/tts', {
@@ -189,51 +123,82 @@ function playNextInQueue() {
   })
     .then(res => res.json())
     .then(data => {
-      if (!data.audioContent) throw new Error("No audio returned");
-      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      if (!data.audioContent) throw new Error("No audio content returned");
+      const audio = new Audio(data:audio/mp3;base64,${data.audioContent});
       audio.play().catch(console.warn);
-      audio.onended = () => {
-        isSpeaking = false;
-        playNextInQueue();
-      };
+      audio.onended = () => { isSpeaking = false; playNextInQueue(); };
     })
     .catch(err => {
-      console.error("TTS error:", err);
+      console.warn("TTS error:", err);
       isSpeaking = false;
       playNextInQueue();
     });
 }
 
-function sendToMake(blob, url, onReply) {
-  if (isWaitingForReply) return;
-  isWaitingForReply = true;
-  const formData = new FormData();
-  formData.append('file', blob, 'audio.webm');
-  if (currentScenario?.id) formData.append('id', currentScenario.id);
-  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
-  formData.append('scenario_id', currentScenario?.id);
+document.getElementById("start-random-btn").addEventListener("click", () => {
+  if (allScenarios.length === 0) return;
+  const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
+  loadScenario(randomScenario);
+});
 
-  fetch(url, { method: 'POST', body: formData })
-    .then(async res => {
-      const raw = await res.text();
-      try {
-        const json = JSON.parse(raw);
-        const decoded = atob(json.reply);
-        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-        onReply(cleanedReply);
-      } catch (e) {
-        console.error("Failed to decode:", e);
-        onReply(null, true);
-      }
-      isWaitingForReply = false;
-    })
-    .catch(err => {
-      console.error("Fetch error:", err);
-      onReply(null, true);
-      isWaitingForReply = false;
-    });
+document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
+  const selectedId = e.target.value;
+  const selectedScenario = allScenarios.find(s => s.id === selectedId);
+  if (selectedScenario) loadScenario(selectedScenario);
+});
+
+function loadScenario(scenario) {
+  currentScenario = scenario;
+  isRecording = false;
+  showMicRecording(false);
+  document.getElementById("scenario-title").textContent = scenario.title;
+  document.getElementById("scenario-text").textContent = scenario.prompt_text;
+  document.getElementById("scenario-box").style.display = "block";
+  document.getElementById("chat-container").innerHTML = "<b>AI Replies:</b><br>";
+  document.getElementById("start-station-btn").style.display = "inline-block";
+  document.getElementById("stop-station-btn").style.display = "none";
 }
+
+document.getElementById("start-station-btn").addEventListener("click", () => {
+  document.getElementById("start-station-btn").style.display = "none";
+  document.getElementById("stop-station-btn").style.display = "inline-block";
+  document.getElementById("chat-container").style.display = "block";
+  startTimer(20);
+  sessionEndTime = Date.now() + 20 * 1000;
+  isRecording = true;
+
+  let hasFirstReplyHappened = false;
+
+  function showReply(replyText, isError = false) {
+    const el = document.createElement('p');
+    el.style.marginTop = "10px";
+    el.style.padding = "8px";
+    el.style.borderRadius = "6px";
+    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
+      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+    const voiceCleaned = replyText
+      .replace(/\[(.*?)\]/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
+      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    el.innerHTML = visible;
+    document.getElementById('chat-container').appendChild(el);
+    if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
+
+    // Trigger scripted argument only after first reply
+    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
+      hasFirstReplyHappened = true;
+      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
+    }
+  }
+
+  startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
+});
+
+document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
 
 function startTimer(duration) {
   let timer = duration;
@@ -241,7 +206,7 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  timerDisplay.textContent = ${minutes}:${seconds < 10 ? "0" : ""}${seconds};
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
@@ -282,152 +247,131 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   myvad.start();
 
-  setTimeout(async () => {
-    isRecording = false;
-    isSessionOver = true;
-    audioQueue = [];
-    isSpeaking = false;
-    try {
+setTimeout(async () => {
+  isRecording = false;
+  isSessionOver = true;
+  audioQueue = [];
+isSpeaking = false;
   myvad.destroy();
-} catch (e) {
-  console.warn("VAD cleanup failed:", e);
-}
-    stream.getTracks().forEach(track => track.stop());
-    showMicRecording(false);
-    triggerFeedbackSummary();
-  }, 20 * 1000);
-}
+  stream.getTracks().forEach(track => track.stop());
+  showMicRecording(false);
 
-function triggerFeedbackSummary() {
-  const chatContainer = document.getElementById('chat-container');
-  if (!chatContainer) return;
+ // Show waiting feedback message
+const chatContainer = document.getElementById('chat-container');
+const loadingEl = document.createElement('p');
 
-  const loadingEl = document.createElement('p');
-  loadingEl.style.color = "#666";
-  loadingEl.style.fontStyle = "italic";
-  loadingEl.textContent = "📝 Generating feedback, please wait";
-  chatContainer.appendChild(loadingEl);
+loadingEl.style.color = "#666";
+loadingEl.style.fontStyle = "italic";
+loadingEl.textContent = "📝 Generating feedback, please wait";
+chatContainer.appendChild(loadingEl);
 
-  let dotCount = 0;
-  const dotInterval = setInterval(() => {
-    dotCount = (dotCount + 1) % 4;
-    loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
-  }, 500);
+let dotCount = 0;
+const dotInterval = setInterval(() => {
+  dotCount = (dotCount + 1) % 4; // cycle through 0 to 3
+  loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
+}, 500);
 
-  fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: window.currentSessionId,
-      scenario_id: currentScenario?.id
-    })
+
+  try {
+   const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    session_id: window.currentSessionId,
+    scenario_id: currentScenario?.id
   })
-    .then(res => res.json())
-    .then(data => {
-      clearInterval(dotInterval);
-      loadingEl.remove();
+});
 
-      const feedbackContainer = document.createElement('div');
-      feedbackContainer.style.backgroundColor = "#f0faff";
-      feedbackContainer.style.padding = "15px";
-      feedbackContainer.style.marginTop = "10px";
-      feedbackContainer.style.borderRadius = "10px";
-      feedbackContainer.style.border = "1px solid #b3e5ff";
+const data = await res.json();
+    clearInterval(dotInterval);
+loadingEl.remove();
+    
 
-      feedbackContainer.innerHTML = `
-        <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
-        <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
-        <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
-        <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
-        <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
-        <hr style="margin:12px 0;">
-        <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
-      `;
 
-      const heading = document.createElement('h2');
-      heading.textContent = "📋 Your Feedback Summary";
-      heading.style.marginTop = "30px";
-      heading.style.marginBottom = "10px";
-      heading.style.fontSize = "20px";
-      heading.style.color = "#333";
+const feedbackContainer = document.createElement('div');
+feedbackContainer.style.backgroundColor = "#f0faff";
+feedbackContainer.style.padding = "15px";
+feedbackContainer.style.marginTop = "10px";
+feedbackContainer.style.borderRadius = "10px";
+feedbackContainer.style.border = "1px solid #b3e5ff";
 
-      const divider = document.createElement('hr');
-      divider.style.margin = "10px 0 20px";
+feedbackContainer.innerHTML = 
+  <h3 style="margin-bottom:10px;">🧠 Feedback Summary</h3>
+  <p><strong>Clinical:</strong> ${data.Clinical.grade} – ${data.Clinical.rationale}</p>
+  <p><strong>Communication:</strong> ${data.Communication.grade} – ${data.Communication.rationale}</p>
+  <p><strong>Professionalism:</strong> ${data.Professionalism.grade} – ${data.Professionalism.rationale}</p>
+  <p><strong>Management & Leadership:</strong> ${data.ManagementAndLeadership.grade} – ${data.ManagementAndLeadership.rationale}</p>
+  <hr style="margin:12px 0;">
+  <p><strong>💡 Overall Comments:</strong><br>${data.overall_comments}</p>
+;
 
-      chatContainer.appendChild(heading);
-      chatContainer.appendChild(divider);
-      chatContainer.appendChild(feedbackContainer);
-      feedbackContainer.scrollIntoView({ behavior: "smooth" });
+const heading = document.createElement('h2');
+heading.textContent = "📋 Your Feedback Summary";
+heading.style.marginTop = "30px";
+heading.style.marginBottom = "10px";
+heading.style.fontSize = "20px";
+heading.style.color = "#333";
 
-      const retryBtn = document.createElement('button');
-      retryBtn.textContent = "🔁 Try Another Scenario";
-      retryBtn.onclick = () => location.reload();
-      retryBtn.style.marginTop = "15px";
-      retryBtn.style.padding = "10px 16px";
-      retryBtn.style.borderRadius = "8px";
-      retryBtn.style.backgroundColor = "#007bff";
-      retryBtn.style.color = "#fff";
-      retryBtn.style.border = "none";
-      retryBtn.style.cursor = "pointer";
-      feedbackContainer.appendChild(retryBtn);
+const divider = document.createElement('hr');
+divider.style.margin = "10px 0 20px";
+
+chatContainer.appendChild(heading);
+chatContainer.appendChild(divider);
+document.getElementById('chat-container').appendChild(feedbackContainer);
+    feedbackContainer.scrollIntoView({ behavior: "smooth" });
+    const retryBtn = document.createElement('button');
+retryBtn.textContent = "🔁 Try Another Scenario";
+retryBtn.onclick = () => location.reload();
+retryBtn.style.marginTop = "15px";
+retryBtn.style.padding = "10px 16px";
+retryBtn.style.borderRadius = "8px";
+retryBtn.style.backgroundColor = "#007bff";
+retryBtn.style.color = "#fff";
+retryBtn.style.border = "none";
+retryBtn.style.cursor = "pointer";
+feedbackContainer.appendChild(retryBtn);
+
+
+
+  } catch (err) {
+    console.error("Feedback fetch error:", err);
+    loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
+    loadingEl.style.color = "red";
+  }
+}, 20 * 1000);
+
+}
+
+function sendToMake(blob, url, onReply) {
+  if (isWaitingForReply) return;
+  isWaitingForReply = true;
+  const formData = new FormData();
+  formData.append('file', blob, 'audio.webm');
+  if (currentScenario?.id) formData.append('id', currentScenario.id);
+  if (window.currentSessionId) formData.append('session_id', window.currentSessionId);
+ formData.append('scenario_id', currentScenario?.id);
+
+
+  fetch(url, { method: 'POST', body: formData })
+    .then(async res => {
+      const raw = await res.text();
+      try {
+        const json = JSON.parse(raw);
+        const decoded = atob(json.reply);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+        onReply(cleanedReply);
+      } catch (e) {
+        console.error("Failed to decode:", e);
+        onReply(null, true);
+      }
+      isWaitingForReply = false;
     })
     .catch(err => {
-      clearInterval(dotInterval);
-      loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
-      loadingEl.style.color = "red";
-      console.error("Feedback fetch error:", err);
+      console.error("Fetch error:", err);
+      onReply(null, true);
+      isWaitingForReply = false;
     });
 }
-
-// Event bindings
-document.getElementById("start-random-btn").addEventListener("click", () => {
-  if (allScenarios.length === 0) return;
-  const randomScenario = allScenarios[Math.floor(Math.random() * allScenarios.length)];
-  loadScenario(randomScenario);
-});
-
-document.getElementById("scenario-dropdown").addEventListener("change", (e) => {
-  const selectedId = e.target.value;
-  const selectedScenario = allScenarios.find(s => s.id === selectedId);
-  if (selectedScenario) loadScenario(selectedScenario);
-});
-
-document.getElementById("start-station-btn").addEventListener("click", () => {
-  document.getElementById("start-station-btn").style.display = "none";
-  document.getElementById("stop-station-btn").style.display = "inline-block";
-  document.getElementById("chat-container").style.display = "block";
-  startTimer(20);
-  isRecording = true;
-  let hasFirstReplyHappened = false;
-
-  function showReply(replyText, isError = false) {
-    const el = document.createElement('p');
-    el.style.marginTop = "10px";
-    el.style.padding = "8px";
-    el.style.borderRadius = "6px";
-    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
-      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-    const voiceCleaned = replyText
-      .replace(/\[(.*?)\]/g, '')
-      .replace(/\(.*?\)/g, '')
-      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
-      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    el.innerHTML = visible;
-    document.getElementById('chat-container').appendChild(el);
-    if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
-
-    if (!hasFirstReplyHappened && currentScenario?.id === "64" && currentScenario?.script && /\[.*?\]/.test(currentScenario.script.trim())) {
-      hasFirstReplyHappened = true;
-      setTimeout(() => showReplyFromScript(currentScenario.script), 500);
-    }
-  }
-
-  startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
-});
-
-document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
 
 window.addEventListener("DOMContentLoaded", () => getScenarios());
