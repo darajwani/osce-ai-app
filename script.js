@@ -348,11 +348,24 @@ async function endSessionAndShowFeedback() {
     clearInterval(dotInterval);
     loadingEl.remove();
 
-    // ✅ Show feedback as you do now...
-    // ... (you already have this block in your code — keep as is)
+    const feedbackText = data?.feedback || "No feedback available.";
+
+    // Clear previous replies
+    chatContainer.innerHTML = "<b>📝 Feedback:</b><br>";
+
+    // Display feedback
+    const feedbackEl = document.createElement('p');
+    feedbackEl.style.marginTop = "10px";
+    feedbackEl.style.padding = "10px";
+    feedbackEl.style.backgroundColor = "#e8f5e9";  // light green
+    feedbackEl.style.border = "1px solid #a5d6a7";
+    feedbackEl.style.borderRadius = "6px";
+    feedbackEl.textContent = feedbackText;
+    chatContainer.appendChild(feedbackEl);
 
   } catch (err) {
     console.error("Feedback fetch error:", err);
+    clearInterval(dotInterval); // in case error happens before clearing
     loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
     loadingEl.style.color = "red";
   }
