@@ -1,5 +1,6 @@
 // Top-level state
 let isWaitingForReply = false;
+const STATION_DURATION_SECONDS = 300; // ⏱ Set session length to 5 minutes (300 seconds)
 let currentScenario = null;
 let allScenarios = [];
 let sessionEndTime;
@@ -185,8 +186,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
-  startTimer(300);
-  sessionEndTime = Date.now() + 300 * 1000;
+ startTimer(STATION_DURATION_SECONDS);
+sessionEndTime = Date.now() + STATION_DURATION_SECONDS * 1000;
   isRecording = true;
 
   let hasFirstReplyHappened = false;
@@ -360,8 +361,7 @@ feedbackContainer.appendChild(retryBtn);
     loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
     loadingEl.style.color = "red";
   }
-}, 20 * 1000);
-
+}, STATION_DURATION_SECONDS * 1000);
 }
 
 function sendToMake(blob, url, onReply) {
