@@ -1,6 +1,5 @@
 // Top-level state
 let isWaitingForReply = false;
-const STATION_DURATION_SECONDS = 300; // ⏱ Set session length to 5 minutes (300 seconds)
 let currentScenario = null;
 let allScenarios = [];
 let sessionEndTime;
@@ -186,8 +185,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
- startTimer(STATION_DURATION_SECONDS);
-sessionEndTime = Date.now() + STATION_DURATION_SECONDS * 1000;
+  startTimer(20);
+  sessionEndTime = Date.now() + 20 * 1000;
   isRecording = true;
 
   let hasFirstReplyHappened = false;
@@ -197,23 +196,16 @@ sessionEndTime = Date.now() + STATION_DURATION_SECONDS * 1000;
     el.style.marginTop = "10px";
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
-  if (!replyText || typeof replyText !== 'string') {
-  console.warn("Missing or invalid replyText:", replyText);
-  return; // Prevent crash
-}
-
-el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
-  "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-const voiceCleaned = replyText
-  .replace(/\[(.*?)\]/g, '')
-  .replace(/\(.*?\)/g, '')
-  .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
-  .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
-  .replace(/\s+/g, ' ')
-  .trim();
-
-
+    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
+      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+    const voiceCleaned = replyText
+      .replace(/\[(.*?)\]/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
+      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     el.innerHTML = visible;
     document.getElementById('chat-container').appendChild(el);
     if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
@@ -301,18 +293,16 @@ const dotInterval = setInterval(() => {
   loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
 }, 500);
 
-await new Promise(resolve => setTimeout(resolve, 15000)); // ⏱ wait 15 seconds before feedback
 
-try {
-  const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: window.currentSessionId,
-      scenario_id: currentScenario?.id
-    })
-  });
-
+  try {
+   const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    session_id: window.currentSessionId,
+    scenario_id: currentScenario?.id
+  })
+});
 
 const data = await res.json();
     clearInterval(dotInterval);
@@ -370,9 +360,9 @@ feedbackContainer.appendChild(retryBtn);
     loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
     loadingEl.style.color = "red";
   }
-})()
-}, STATION_DURATION_SECONDS * 1000);
+}, 20 * 1000);
 
+}
 
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) return;
@@ -384,57 +374,27 @@ function sendToMake(blob, url, onReply) {
  formData.append('scenario_id', currentScenario?.id);
 
 
-fetch(url, { method: 'POST', body: formData })
-  .then(async res => {
-    const raw = await res.text();
-
-    // ⛔ Plain text (not JSON), skip
-    if (raw.trim() === "Accepted") {
-      console.log("Webhook acknowledged but did not return GPT output.");
+  fetch(url, { method: 'POST', body: formData })
+    .then(async res => {
+      const raw = await res.text();
+      try {
+        const json = JSON.parse(raw);
+        const decoded = atob(json.reply);
+        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+        onReply(cleanedReply);
+      } catch (e) {
+        console.error("Failed to decode:", e);
+        onReply(null, true);
+      }
       isWaitingForReply = false;
-      return;
-    }
-
-    let json;
-    try {
-      json = JSON.parse(raw);
-    } catch (e) {
-      console.warn("Failed to parse JSON from response:", raw);
+    })
+    .catch(err => {
+      console.error("Fetch error:", err);
       onReply(null, true);
       isWaitingForReply = false;
-      return;
-    }
-
-    // ✅ Valid structured response
-    if (
-      json.Clinical && json.Communication &&
-      json.Professionalism && json.ManagementAndLeadership &&
-      typeof json.overall_comments === 'string'
-    ) {
-      const cleanedReply = `
-Clinical: ${json.Clinical.grade} – ${json.Clinical.rationale}
-Communication: ${json.Communication.grade} – ${json.Communication.rationale}
-Professionalism: ${json.Professionalism.grade} – ${json.Professionalism.rationale}
-Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.ManagementAndLeadership.rationale}
-
-💬 Overall Comments: ${json.overall_comments}
-      `.trim();
-
-      onReply(cleanedReply);
-    } 
-    
-    else {
-      console.warn("Incomplete JSON fields:", json);
-      onReply(null, true);
-    }
-
-    isWaitingForReply = false;
-  })
-  .catch(err => {
-    console.error("Fetch error:", err);
-    onReply(null, true);
-    isWaitingForReply = false;
-  });
+    });
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
@@ -449,5 +409,3 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-
-
