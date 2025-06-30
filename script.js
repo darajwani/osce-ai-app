@@ -202,11 +202,6 @@ sessionEndTime = Date.now() + STATION_DURATION_SECONDS * 1000;
   return; // Prevent crash
 }
 
-if (!replyText || typeof replyText !== 'string') {
-  console.warn("Missing or invalid replyText:", replyText);
-  return; // Prevent crash
-}
-
 el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
 const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
   "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
