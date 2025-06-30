@@ -216,6 +216,7 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
       setTimeout(() => showReplyFromScript(currentScenario.script), 500);
     }
   }
+startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
 
 });
 
