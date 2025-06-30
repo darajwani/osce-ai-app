@@ -228,16 +228,16 @@ function startTimer(duration) {
   const interval = setInterval(() => {
     const minutes = Math.floor(timer / 60);
     const seconds = timer % 60;
-  timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    
     if (--timer < 0) {
       clearInterval(interval);
       alert("OSCE session complete!");
-      isRecording = false;
-      showMicRecording(false);
-      if (lastMediaStream) lastMediaStream.getTracks().forEach(t => t.stop());
+      endSessionAndShowFeedback(); // ✅ Replace inline feedback logic
     }
   }, 1000);
 }
+
 
 async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
