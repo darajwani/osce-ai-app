@@ -185,8 +185,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
-  startTimer(20);
-  sessionEndTime = Date.now() + 20 * 1000;
+  startTimer(300);
+  sessionEndTime = Date.now() + 300 * 1000;
   isRecording = true;
 
   let hasFirstReplyHappened = false;
