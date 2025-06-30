@@ -383,13 +383,51 @@ function sendToMake(blob, url, onReply) {
  formData.append('scenario_id', currentScenario?.id);
 
 
-  fetch(url, { method: 'POST', body: formData })
-.then(async res => {
-  const raw = await res.text();
+fetch(url, { method: 'POST', body: formData })
+  .then(async res => {
+    const raw = await res.text();
 
-  try {
-    const json = JSON.parse(raw);
-    if (!json.reply) throw new Error("No 'reply' field in JSON");
+    // ⛔ If Make just responds with plain "Accepted", skip further processing
+    if (raw.trim() === "Accepted") {
+      console.log("Webhook acknowledged but did not return GPT output.");
+      isWaitingForReply = false;
+      return;
+    }
+
+    let json;
+    try {
+      json = JSON.parse(raw);
+    } catch (e) {
+      console.warn("Failed to parse JSON from response:", raw);
+      onReply(null, true);
+      isWaitingForReply = false;
+      return;
+    }
+
+    // ✅ Build the reply directly from the GPT fields
+    if (
+      json.Clinical && json.Communication &&
+      json.Professionalism && json.ManagementAndLeadership &&
+      typeof json.overall_comments === 'string'
+    ) {
+      const cleanedReply = `
+Clinical: ${json.Clinical.grade} – ${json.Clinical.rationale}
+Communication: ${json.Communication.grade} – ${json.Communication.rationale}
+Professionalism: ${json.Professionalism.grade} – ${json.Professionalism.rationale}
+Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.ManagementAndLeadership.rationale}
+
+💬 Overall Comments: ${json.overall_comments}
+      `.trim();
+
+      onReply(cleanedReply);
+    } else {
+      console.warn("Incomplete JSON fields:", json);
+      onReply(null, true);
+    }
+
+    isWaitingForReply = false;
+  })
+
     
  // Build a flat summary string from the structured JSON response
 const cleanedReply = `
