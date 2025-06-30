@@ -217,7 +217,6 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
     }
   }
 
-  startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
 });
 
 document.getElementById("stop-station-btn").addEventListener("click", () => location.reload());
