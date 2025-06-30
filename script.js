@@ -350,8 +350,14 @@ async function endSessionAndShowFeedback() {
 
     const feedbackText = data?.feedback || "No feedback available.";
 
-    // Clear previous replies
-    chatContainer.innerHTML = "<b>📝 Feedback:</b><br>";
+// Completely clear all AI replies
+chatContainer.innerHTML = "";
+
+// Add only the feedback header
+const headerEl = document.createElement('b');
+headerEl.textContent = "📝 Feedback:";
+chatContainer.appendChild(headerEl);
+chatContainer.appendChild(document.createElement("br"));
 
     // Display feedback
     const feedbackEl = document.createElement('p');
