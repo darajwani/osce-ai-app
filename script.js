@@ -421,7 +421,9 @@ Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.Manage
       `.trim();
 
       onReply(cleanedReply);
-    } else {
+    } 
+    
+    else {
       console.warn("Incomplete JSON fields:", json);
       onReply(null, true);
     }
@@ -433,35 +435,6 @@ Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.Manage
     onReply(null, true);
     isWaitingForReply = false;
   });
-
-
-    
- // Build a flat summary string from the structured JSON response
-const cleanedReply = `
-Clinical: ${json.Clinical.grade} – ${json.Clinical.rationale}
-Communication: ${json.Communication.grade} – ${json.Communication.rationale}
-Professionalism: ${json.Professionalism.grade} – ${json.Professionalism.rationale}
-Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.ManagementAndLeadership.rationale}
-
-💬 Overall Comments: ${json.overall_comments}
-`.trim();
-
-onReply(cleanedReply);
-
-  } catch (e) {
-    console.warn("Non-JSON or malformed response:", raw);
-    onReply(null, true); // fallback message or error handling
-  }
-
-  isWaitingForReply = false;
-})
-
-    .catch(err => {
-      console.error("Fetch error:", err);
-      onReply(null, true);
-      isWaitingForReply = false;
-    });
-}
 
 window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
