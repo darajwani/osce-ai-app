@@ -294,16 +294,18 @@ const dotInterval = setInterval(() => {
   loadingEl.textContent = "📝 Generating feedback, please wait" + ".".repeat(dotCount);
 }, 500);
 
+await new Promise(resolve => setTimeout(resolve, 15000)); // ⏱ wait 15 seconds before feedback
 
-  try {
-   const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    session_id: window.currentSessionId,
-    scenario_id: currentScenario?.id
-  })
-});
+try {
+  const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: window.currentSessionId,
+      scenario_id: currentScenario?.id
+    })
+  });
+
 
 const data = await res.json();
     clearInterval(dotInterval);
