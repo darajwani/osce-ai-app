@@ -370,8 +370,9 @@ feedbackContainer.appendChild(retryBtn);
     loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
     loadingEl.style.color = "red";
   }
+})()
 }, STATION_DURATION_SECONDS * 1000);
-}
+
 
 function sendToMake(blob, url, onReply) {
   if (isWaitingForReply) return;
@@ -387,7 +388,7 @@ fetch(url, { method: 'POST', body: formData })
   .then(async res => {
     const raw = await res.text();
 
-    // ⛔ If Make just responds with plain "Accepted", skip further processing
+    // ⛔ Plain text (not JSON), skip
     if (raw.trim() === "Accepted") {
       console.log("Webhook acknowledged but did not return GPT output.");
       isWaitingForReply = false;
@@ -404,7 +405,7 @@ fetch(url, { method: 'POST', body: formData })
       return;
     }
 
-    // ✅ Build the reply directly from the GPT fields
+    // ✅ Valid structured response
     if (
       json.Clinical && json.Communication &&
       json.Professionalism && json.ManagementAndLeadership &&
@@ -427,6 +428,12 @@ Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.Manage
 
     isWaitingForReply = false;
   })
+  .catch(err => {
+    console.error("Fetch error:", err);
+    onReply(null, true);
+    isWaitingForReply = false;
+  });
+
 
     
  // Build a flat summary string from the structured JSON response
