@@ -391,10 +391,18 @@ function sendToMake(blob, url, onReply) {
     const json = JSON.parse(raw);
     if (!json.reply) throw new Error("No 'reply' field in JSON");
     
-    const decoded = atob(json.reply);
-    const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-    const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-    onReply(cleanedReply);
+ // Build a flat summary string from the structured JSON response
+const cleanedReply = `
+Clinical: ${json.Clinical.grade} – ${json.Clinical.rationale}
+Communication: ${json.Communication.grade} – ${json.Communication.rationale}
+Professionalism: ${json.Professionalism.grade} – ${json.Professionalism.rationale}
+Management & Leadership: ${json.ManagementAndLeadership.grade} – ${json.ManagementAndLeadership.rationale}
+
+💬 Overall Comments: ${json.overall_comments}
+`.trim();
+
+onReply(cleanedReply);
+
   } catch (e) {
     console.warn("Non-JSON or malformed response:", raw);
     onReply(null, true); // fallback message or error handling
