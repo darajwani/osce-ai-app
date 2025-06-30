@@ -197,16 +197,28 @@ sessionEndTime = Date.now() + STATION_DURATION_SECONDS * 1000;
     el.style.marginTop = "10px";
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
-    el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
-      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
-    const voiceCleaned = replyText
-      .replace(/\[(.*?)\]/g, '')
-      .replace(/\(.*?\)/g, '')
-      .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
-      .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+  if (!replyText || typeof replyText !== 'string') {
+  console.warn("Missing or invalid replyText:", replyText);
+  return; // Prevent crash
+}
+
+if (!replyText || typeof replyText !== 'string') {
+  console.warn("Missing or invalid replyText:", replyText);
+  return; // Prevent crash
+}
+
+el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
+const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
+  "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+const voiceCleaned = replyText
+  .replace(/\[(.*?)\]/g, '')
+  .replace(/\(.*?\)/g, '')
+  .replace(/\b(um+|mm+|ah+|eh+|uh+|yeah)[.,]?/gi, '')
+  .replace(/[🧑‍⚕️👩‍⚕️👨‍⚕️]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+
     el.innerHTML = visible;
     document.getElementById('chat-container').appendChild(el);
     if (!isError && replyText) queueAndSpeakReply(voiceCleaned);
@@ -377,20 +389,25 @@ function sendToMake(blob, url, onReply) {
 
 
   fetch(url, { method: 'POST', body: formData })
-    .then(async res => {
-      const raw = await res.text();
-      try {
-        const json = JSON.parse(raw);
-        const decoded = atob(json.reply);
-        const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
-        const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
-        onReply(cleanedReply);
-      } catch (e) {
-        console.error("Failed to decode:", e);
-        onReply(null, true);
-      }
-      isWaitingForReply = false;
-    })
+.then(async res => {
+  const raw = await res.text();
+
+  try {
+    const json = JSON.parse(raw);
+    if (!json.reply) throw new Error("No 'reply' field in JSON");
+    
+    const decoded = atob(json.reply);
+    const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+    const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
+    onReply(cleanedReply);
+  } catch (e) {
+    console.warn("Non-JSON or malformed response:", raw);
+    onReply(null, true); // fallback message or error handling
+  }
+
+  isWaitingForReply = false;
+})
+
     .catch(err => {
       console.error("Fetch error:", err);
       onReply(null, true);
