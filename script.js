@@ -269,10 +269,6 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
 
   myvad.start();
 }
-let lastSentToMake = 0;
-
-myvad.start();
-}
 
 let lastSentToMake = 0;
 
