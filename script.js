@@ -349,6 +349,7 @@ async function endSessionAndShowFeedback() {
 
     const data = await res.json();
     console.log("🔍 Feedback response from Make.com:", data);
+    console.log("💬 Full feedback object:", data);
     clearInterval(dotInterval);
     loadingEl.remove();
 
@@ -359,18 +360,21 @@ async function endSessionAndShowFeedback() {
       feedbackText += `📝 Overall Comments:\n${data.overall_comments}\n\n`;
     }
 
-    const domains = ["Clinical", "Communication", "Professionalism", "ManagementAndLeadership"];
-    domains.forEach(domain => {
-      const domainData = data[domain];
-      if (domainData?.feedback) {
-        feedbackText += `📌 ${domain}:\n${domainData.feedback}\n\n`;
-      }
-    });
+ const domains = ["Clinical", "Communication", "Professionalism", "ManagementAndLeadership"];
+domains.forEach(domain => {
+  const domainData = data[domain];
+  if (domainData) {
+    feedbackText += `📌 ${domain}:\n`;
+    if (domainData.grade) feedbackText += `- Grade: ${domainData.grade}\n`;
+    if (domainData.rationale) feedbackText += `- Rationale: ${domainData.rationale}\n`;
+    feedbackText += `\n`;
+    console.log("🧪 Available domain keys:", Object.keys(data));
+  }
+});
+
 
     feedbackText = feedbackText.trim() || "No feedback available.";
-    if (!feedbackText.trim()) {
-  console.warn("⚠️ Feedback is empty or missing from Make.com");
-}
+   }
 
     // Clear previous content
     chatContainer.innerHTML = "";
