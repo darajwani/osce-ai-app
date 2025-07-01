@@ -296,10 +296,12 @@ function sendToMake(blob, url, onReply) {
         const bytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
         const cleanedReply = new TextDecoder('utf-8').decode(bytes).trim();
         onReply(cleanedReply);
-      } catch (e) {
-        console.error("Failed to decode:", e);
-        onReply(null, true);
-      }
+      } 
+      catch (e) {
+  console.error("Failed to decode Make.com response:", e, raw);
+  alert("⚠️ There was a problem interpreting the response. Please try again.");
+  onReply(null, true);
+}
       isWaitingForReply = false;
     })
     .catch(err => {
@@ -366,6 +368,9 @@ async function endSessionAndShowFeedback() {
     });
 
     feedbackText = feedbackText.trim() || "No feedback available.";
+    if (!feedbackText.trim()) {
+  console.warn("⚠️ Feedback is empty or missing from Make.com");
+}
 
     // Clear previous content
     chatContainer.innerHTML = "";
