@@ -350,6 +350,7 @@ async function endSessionAndShowFeedback() {
     const data = await res.json();
     console.log("🔍 Feedback response from Make.com:", data);
     console.log("💬 Full feedback object:", data);
+    console.log("🧪 Available domain keys:", Object.keys(data));
     clearInterval(dotInterval);
     loadingEl.remove();
 
@@ -368,13 +369,12 @@ domains.forEach(domain => {
     if (domainData.grade) feedbackText += `- Grade: ${domainData.grade}\n`;
     if (domainData.rationale) feedbackText += `- Rationale: ${domainData.rationale}\n`;
     feedbackText += `\n`;
-    console.log("🧪 Available domain keys:", Object.keys(data));
-  }
+      }
 });
 
 
     feedbackText = feedbackText.trim() || "No feedback available.";
-   }
+   
 
     // Clear previous content
     chatContainer.innerHTML = "";
