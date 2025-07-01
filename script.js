@@ -197,8 +197,9 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
     el.style.backgroundColor = isError ? "#ffecec" : "#f2f2f2";
-    const visible = isError ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?" :
-      "🧑‍⚕️ Patient: " + replyText.replace(/\s+/g, ' ').trim();
+const visible = isError
+  ? "⚠️ Patient: Sorry, I didn't catch that. Could you repeat?"
+  : "🧑‍⚕️ Patient: " + (replyText || "").replace(/\s+/g, ' ').trim();
     const voiceCleaned = replyText
       .replace(/\[(.*?)\]/g, '')
       .replace(/\(.*?\)/g, '')
@@ -344,39 +345,56 @@ async function endSessionAndShowFeedback() {
       })
     });
 
-    const data = await res.json();
-    console.log("🔍 Feedback response from Make.com:", data);
-    clearInterval(dotInterval);
-    loadingEl.remove();
+try {
+  const data = await res.json();
+  console.log("🔍 Feedback response from Make.com:", data);
+  clearInterval(dotInterval);
+  loadingEl.remove();
 
-    const feedbackText = data?.result?.feedback || "No feedback available.";
+  // Build the feedback text based on actual structure
+  let feedbackText = "";
 
-// Completely clear all AI replies
-chatContainer.innerHTML = "";
-
-// Add only the feedback header
-const headerEl = document.createElement('b');
-headerEl.textContent = "📝 Feedback:";
-chatContainer.appendChild(headerEl);
-chatContainer.appendChild(document.createElement("br"));
-
-    // Display feedback
-    const feedbackEl = document.createElement('p');
-    feedbackEl.style.marginTop = "10px";
-    feedbackEl.style.padding = "10px";
-    feedbackEl.style.backgroundColor = "#e8f5e9";  // light green
-    feedbackEl.style.border = "1px solid #a5d6a7";
-    feedbackEl.style.borderRadius = "6px";
-    feedbackEl.textContent = feedbackText;
-    chatContainer.appendChild(feedbackEl);
-
-  } catch (err) {
-    console.error("Feedback fetch error:", err);
-    clearInterval(dotInterval); // in case error happens before clearing
-    loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
-    loadingEl.style.color = "red";
+  if (data.overall_comments) {
+    feedbackText += `📝 Overall Comments:\n${data.overall_comments}\n\n`;
   }
+
+  const domains = ["Clinical", "Communication", "Professionalism", "ManagementAndLeadership"];
+  domains.forEach(domain => {
+    const domainData = data[domain];
+    if (domainData?.feedback) {
+      feedbackText += `📌 ${domain}:\n${domainData.feedback}\n\n`;
+    }
+  });
+
+  feedbackText = feedbackText.trim() || "No feedback available.";
+
+  // Completely clear all AI replies
+  chatContainer.innerHTML = "";
+
+  // Add only the feedback header
+  const headerEl = document.createElement('b');
+  headerEl.textContent = "📝 Feedback:";
+  chatContainer.appendChild(headerEl);
+  chatContainer.appendChild(document.createElement("br"));
+
+  // Display feedback
+  const feedbackEl = document.createElement('p');
+  feedbackEl.style.marginTop = "10px";
+  feedbackEl.style.padding = "10px";
+  feedbackEl.style.backgroundColor = "#e8f5e9";  // light green
+  feedbackEl.style.border = "1px solid #a5d6a7";
+  feedbackEl.style.borderRadius = "6px";
+  feedbackEl.style.whiteSpace = "pre-wrap"; // maintain line breaks
+  feedbackEl.textContent = feedbackText;
+  chatContainer.appendChild(feedbackEl);
+
+} catch (err) {
+  console.error("Feedback fetch error:", err);
+  clearInterval(dotInterval); // in case error happens before clearing
+  loadingEl.textContent = "⚠️ Could not load feedback. Please try again later.";
+  loadingEl.style.color = "red";
 }
+
 
 window.addEventListener("DOMContentLoaded", () => {
   getScenarios();
