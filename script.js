@@ -80,7 +80,7 @@ function showReplyFromScript(script) {
     el.style.padding = "8px";
     el.style.borderRadius = "6px";
     el.style.backgroundColor = "#f2f2f2";
-   el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
+    el.innerHTML = `<b>${part.speaker}:</b> ${part.text}`;
     const container = document.getElementById('chat-container');
     if (container) container.appendChild(el);
     queueAndSpeakReply(part.text, part.speaker);
@@ -88,9 +88,17 @@ function showReplyFromScript(script) {
 }
 
 function queueAndSpeakReply(text, speakerOverride = null) {
-if (isSessionOver) return;
+  if (isSessionOver) return;
   audioQueue.push({ text, speaker: speakerOverride });
-  if (!isSpeaking) playNextInQueue();
+  if (!isSpeaking) waitForUserPauseThenPlay();
+}
+
+function waitForUserPauseThenPlay() {
+  if (userStartedSpeakingAfterLastVAD) {
+    setTimeout(waitForUserPauseThenPlay, 300); // Wait until user is silent
+  } else {
+    playNextInQueue();
+  }
 }
 
 function playNextInQueue() {
@@ -102,23 +110,39 @@ function playNextInQueue() {
 
   if (currentScenario?.id === "64") {
     if (speaker === "MOTHER") {
-      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: -6, speakingRate: 0.8 };
+      voiceConfig = {
+        gender: "FEMALE",
+        languageCode: currentScenario.languageCode || "en-GB",
+        pitch: -6,
+        speakingRate: 0.8
+      };
     } else if (speaker === "CHILD") {
-      voiceConfig = { gender: "FEMALE", languageCode: currentScenario.languageCode || "en-GB", pitch: 6, speakingRate: 1.2 };
+      voiceConfig = {
+        gender: "FEMALE",
+        languageCode: currentScenario.languageCode || "en-GB",
+        pitch: 6,
+        speakingRate: 1.2
+      };
     }
   }
 
   if (!voiceConfig) {
-    const matchByName = allScenarios.find(s => s.name?.toUpperCase() === speaker?.toUpperCase());
+    const matchByName = allScenarios.find(
+      s => s.name?.toUpperCase() === speaker?.toUpperCase()
+    );
     if (matchByName) {
       voiceConfig = {
-        gender: matchByName.gender || 'FEMALE', languageCode: matchByName.languageCode || 'en-GB',
-        pitch: parseFloat(matchByName.pitch || 0), speakingRate: parseFloat(matchByName.speakingRate || 1)
+        gender: matchByName.gender || 'FEMALE',
+        languageCode: matchByName.languageCode || 'en-GB',
+        pitch: parseFloat(matchByName.pitch || 0),
+        speakingRate: parseFloat(matchByName.speakingRate || 1)
       };
     } else {
       voiceConfig = {
-        gender: currentScenario?.gender || 'FEMALE', languageCode: currentScenario?.languageCode || 'en-GB',
-        pitch: parseFloat(currentScenario?.pitch || 0), speakingRate: parseFloat(currentScenario?.speakingRate || 1)
+        gender: currentScenario?.gender || 'FEMALE',
+        languageCode: currentScenario?.languageCode || 'en-GB',
+        pitch: parseFloat(currentScenario?.pitch || 0),
+        speakingRate: parseFloat(currentScenario?.speakingRate || 1)
       };
     }
   }
@@ -133,7 +157,10 @@ function playNextInQueue() {
       if (!data.audioContent) throw new Error("No audio content returned");
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.play().catch(console.warn);
-      audio.onended = () => { isSpeaking = false; playNextInQueue(); };
+      audio.onended = () => {
+        isSpeaking = false;
+        playNextInQueue();
+      };
     })
     .catch(err => {
       console.warn("TTS error:", err);
@@ -141,6 +168,7 @@ function playNextInQueue() {
       playNextInQueue();
     });
 }
+
 
 document.getElementById("start-random-btn").addEventListener("click", () => {
   if (allScenarios.length === 0) return;
@@ -246,27 +274,37 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   let recorder = null;
   let chunks = [];
 
-  const myvad = await vad.MicVAD.new({
-    onSpeechStart: () => {
-      showMicRecording(true);
-      chunks = [];
-      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        sendToMake(blob, makeWebhookUrl, (reply, error) => {
-          if (reply) onReply(reply);
-          else onReply(null, true);
-        });
-      };
-      recorder.start();
-    },
-    onSpeechEnd: () => {
-      showMicRecording(false);
-      if (recorder?.state === 'recording') recorder.stop();
-    },
-    modelURL: "./vad/silero_vad.onnx"
-  });
+let userStartedSpeakingAfterLastVAD = false; // ⬅️ Global flag
+
+const myvad = await vad.MicVAD.new({
+  onSpeechStart: () => {
+    userStartedSpeakingAfterLastVAD = true; // ✅ Mark that user resumed speaking
+    showMicRecording(true);
+    chunks = [];
+    recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    recorder.ondataavailable = e => e.data.size > 0 && chunks.push(e.data);
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      sendToMake(blob, makeWebhookUrl, (reply, error) => {
+        if (reply) onReply(reply);
+        else onReply(null, true);
+      });
+    };
+    recorder.start();
+  },
+  onSpeechEnd: () => {
+    showMicRecording(false);
+
+    // ✅ Reset flag shortly after silence, assuming user has stopped
+    setTimeout(() => {
+      userStartedSpeakingAfterLastVAD = false;
+    }, 400); // tweak if needed
+
+    if (recorder?.state === 'recording') recorder.stop();
+  },
+  modelURL: "./vad/silero_vad.onnx"
+});
+
 
   myvad.start();
 }
