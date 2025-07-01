@@ -348,10 +348,10 @@ async function endSessionAndShowFeedback() {
     });
 
     const data = await res.json();
+    console.log("🧪 Available domain keys:", Object.keys(data));
     console.log("🔍 Feedback response from Make.com:", data);
     console.log("💬 Full feedback object:", data);
-    console.log("🧪 Available domain keys:", Object.keys(data));
-    clearInterval(dotInterval);
+        clearInterval(dotInterval);
     loadingEl.remove();
 
     // Build the feedback text
