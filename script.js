@@ -345,10 +345,11 @@ async function endSessionAndShowFeedback() {
     });
 
     const data = await res.json();
+    console.log("🔍 Feedback response from Make.com:", data);
     clearInterval(dotInterval);
     loadingEl.remove();
 
-    const feedbackText = data?.feedback || "No feedback available.";
+    const feedbackText = data?.result?.feedback || "No feedback available.";
 
 // Completely clear all AI replies
 chatContainer.innerHTML = "";
