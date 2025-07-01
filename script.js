@@ -6,6 +6,7 @@ let sessionEndTime;
 let isRecording = false;
 let lastMediaStream = null;
 let isSpeaking = false;
+let userStartedSpeakingAfterLastVAD = false;
 let audioQueue = [];
 let isSessionOver = false;
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
@@ -273,8 +274,6 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   lastMediaStream = stream;
   let recorder = null;
   let chunks = [];
-
-let userStartedSpeakingAfterLastVAD = false; // ⬅️ Global flag
 
 const myvad = await vad.MicVAD.new({
   onSpeechStart: () => {
