@@ -215,8 +215,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
-  startTimer(360);
-  sessionEndTime = Date.now() + 360 * 1000;
+  startTimer(10); //make this 360 original for 6 mins
+  sessionEndTime = Date.now() + 10 * 1000; // make this 360 original for 6 mins
   isRecording = true;
 
   let hasFirstReplyHappened = false;
