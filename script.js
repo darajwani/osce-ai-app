@@ -9,6 +9,7 @@ let isSpeaking = false;
 let userStartedSpeakingAfterLastVAD = false;
 let audioQueue = [];
 let isSessionOver = false;
+let myvad = null; // ✅ Used to stop VAD later
 window.currentSessionId = 'sess-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 
 const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQRS87vXmpyNTcClW-1oEgo7Uogzpu46M2V4f-Ii9UqgGfVGN2Zs-4hU17nDTEvvf7-nDe2vDnGa11/pub?gid=1523640544&single=true&output=csv';
@@ -275,7 +276,7 @@ async function startVoiceLoopWithVAD(makeWebhookUrl, onReply) {
   let recorder = null;
   let chunks = [];
 
-const myvad = await vad.MicVAD.new({
+myvad = await vad.MicVAD.new({
   onSpeechStart: () => {
     userStartedSpeakingAfterLastVAD = true; // ✅ Mark that user resumed speaking
     showMicRecording(true);
@@ -311,6 +312,7 @@ const myvad = await vad.MicVAD.new({
 let lastSentToMake = 0;
 
 function sendToMake(blob, url, onReply) {
+  if (isSessionOver) return; // 🛡️ Don't send audio after session ends
   const now = Date.now();
   if (now - lastSentToMake < 4000) return; // throttle: once every 4 seconds
   lastSentToMake = now;
@@ -353,6 +355,16 @@ let feedbackAlreadySent = false;
 async function endSessionAndShowFeedback() {
   if (feedbackAlreadySent) return;
   feedbackAlreadySent = true;
+
+  if (myvad) {
+  try {
+    await myvad.destroy();  // ✅ Stop VAD microphone listener
+    myvad = null;           // Clean up
+    console.log("VAD stopped successfully.");
+  } catch (err) {
+    console.warn("Failed to stop VAD:", err);
+  }
+}
 
   isRecording = false;
   isSessionOver = true;
