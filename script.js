@@ -97,7 +97,7 @@ function queueAndSpeakReply(text, speakerOverride = null) {
 
 function waitForUserPauseThenPlay() {
   if (userStartedSpeakingAfterLastVAD) {
-    setTimeout(waitForUserPauseThenPlay, 300); // Wait until user is silent
+    setTimeout(waitForUserPauseThenPlay, 700); // Wait until user is silent
   } else {
     playNextInQueue();
   }
