@@ -405,8 +405,9 @@ domains.forEach(domain => {
     feedbackText += `📌 ${domain}:\n`;
     if (domainData.grade) feedbackText += `- Grade: ${domainData.grade}\n`;
     if (domainData.rationale) feedbackText += `- Rationale: ${domainData.rationale}\n`;
+    if (domainData.suggestion) feedbackText += `- Suggestion: ${domainData.suggestion}\n`;
     feedbackText += `\n`;
-      }
+  }
 });
 
 
