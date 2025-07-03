@@ -97,7 +97,7 @@ function queueAndSpeakReply(text, speakerOverride = null) {
 
 function waitForUserPauseThenPlay() {
   if (userStartedSpeakingAfterLastVAD) {
-    setTimeout(waitForUserPauseThenPlay, 700); // Wait until user is silent
+    setTimeout(waitForUserPauseThenPlay, 1000); // Wait until user is silent
   } else {
     playNextInQueue();
   }
@@ -215,8 +215,8 @@ document.getElementById("start-station-btn").addEventListener("click", () => {
   document.getElementById("start-station-btn").style.display = "none";
   document.getElementById("stop-station-btn").style.display = "inline-block";
   document.getElementById("chat-container").style.display = "block";
-  startTimer(700); //make this 360 original for 6 mins
-  sessionEndTime = Date.now() + 700 * 1000; // make this 360 original for 6 mins
+  startTimer(360); //make this 360 original for 6 mins
+  sessionEndTime = Date.now() + 360 * 1000; // make this 360 original for 6 mins
   isRecording = true;
 
   let hasFirstReplyHappened = false;
