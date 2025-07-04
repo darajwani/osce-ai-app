@@ -247,7 +247,7 @@ const visible = isError
       setTimeout(() => showReplyFromScript(currentScenario.script), 500);
     }
   }
-startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
+startVoiceLoopWithVAD('https://dentaverse.app.n8n.cloud/webhook-test/osce', showReply);
 
 });
 
