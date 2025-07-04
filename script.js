@@ -387,7 +387,7 @@ async function endSessionAndShowFeedback() {
   }, 500);
 
   try {
-    const res = await fetch("https://hook.eu2.make.com/sa0h4ioj4uetd5yv2m7nzg3eyicn8d2c", {
+    const res = await fetch("https://cloud.activepieces.com/api/v1/webhooks/mse1Gwx3xPFsdZDtql3LR", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
