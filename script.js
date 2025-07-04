@@ -247,7 +247,7 @@ const visible = isError
       setTimeout(() => showReplyFromScript(currentScenario.script), 500);
     }
   }
-startVoiceLoopWithVAD('https://cloud.activepieces.com/api/v1/webhooks/mse1Gwx3xPFsdZDtql3LR', showReply);
+startVoiceLoopWithVAD('https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag', showReply);
 
 });
 
@@ -387,7 +387,7 @@ async function endSessionAndShowFeedback() {
   }, 500);
 
   try {
-    const res = await fetch("https://cloud.activepieces.com/api/v1/webhooks/mse1Gwx3xPFsdZDtql3LR", {
+    const res = await fetch("https://hook.eu2.make.com/ww75pnuxjg16wifpsbq1xcrvo3ajorag", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
